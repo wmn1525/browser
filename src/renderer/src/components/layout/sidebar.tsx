@@ -27,7 +27,7 @@ export function Sidebar({ activeModule, onCreateProfile, onNavigate }: SidebarPr
           <CloudCog className="size-6" />
           <span>Im-Run Browser</span>
         </div>
-        <p className="mt-1 text-[10px] uppercase text-muted-foreground">v 0.1.0</p>
+        <p className="mt-1 text-[10px] uppercase text-muted-foreground">v 0.1.5</p>
       </div>
 
       <Button className="mb-4 w-full" onClick={onCreateProfile} type="button">
