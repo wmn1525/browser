@@ -1,0 +1,41 @@
+name: Build Mac
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-mac-arm64:
+    name: Build macOS arm64
+    runs-on: macos-latest
+    env:
+      # 测试打包阶段不查找本机签名证书，避免 CI 因缺少 Apple 证书失败。
+      CSC_IDENTITY_AUTO_DISCOVERY: "false"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Build macOS package
+        run: npm run dist:mac-arm64
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: imrun-browser-mac-arm64
+          path: release/*
+          if-no-files-found: error
