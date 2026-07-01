@@ -7,6 +7,7 @@
   "scripts": {
     "build": "electron-vite build",
     "dev": "node scripts/run-electron-vite.cjs dev",
+    "dist:mac-arm64": "npm run build && electron-builder --mac --arm64",
     "dist:win": "npm run build && electron-builder --win --x64",
     "start": "node scripts/run-electron-vite.cjs preview",
     "typecheck": "tsc -p tsconfig.main.json --noEmit && tsc -p tsconfig.renderer.json --noEmit"
@@ -57,6 +58,13 @@
       "out/**/*",
       "package.json"
     ],
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "artifactName": "${productName}-${version}-${arch}.${ext}"
+    },
     "win": {
       "target": "nsis",
       "icon": "resources/icon.ico",

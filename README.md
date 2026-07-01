@@ -66,7 +66,15 @@ npm run start
 npm run dist:win
 ```
 
+构建 Apple Silicon Mac 安装包：
+
+```bash
+npm run dist:mac-arm64
+```
+
 安装包输出目录为 `release`。
+
+Mac 安装包需要在 macOS 环境构建。当前命令面向 M 系列芯片，产物架构为 `arm64`。
 
 ## 目录结构
 
@@ -99,11 +107,12 @@ src/shared/                main、preload 和 renderer 共用 DTO
 
 ## 发布配置
 
-Windows 安装包由 `electron-builder` 生成，配置位于 `package.json` 的 `build` 字段：
+安装包由 `electron-builder` 生成，配置位于 `package.json` 的 `build` 字段：
 
 - `appId`：`com.imrun.browser`
 - `productName`：`ImRun Browser`
-- 安装包格式：NSIS
+- Windows 安装包格式：NSIS
+- Apple Silicon Mac 安装包格式：DMG、ZIP
 - 更新源：`https://browser.im-run.com/publish/`
 
 ## 开发约定
