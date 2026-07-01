@@ -6,9 +6,9 @@
   "main": "out/main/main.js",
   "scripts": {
     "build": "electron-vite build",
-    "dev": "electron-vite dev",
+    "dev": "node scripts/run-electron-vite.cjs dev",
     "dist:win": "npm run build && electron-builder --win --x64",
-    "start": "electron-vite preview",
+    "start": "node scripts/run-electron-vite.cjs preview",
     "typecheck": "tsc -p tsconfig.main.json --noEmit && tsc -p tsconfig.renderer.json --noEmit"
   },
   "dependencies": {
@@ -43,7 +43,8 @@
     "postcss": "^8.4.49",
     "tailwind-merge": "^2.6.0",
     "tailwindcss": "^3.4.17",
-    "typescript": "^5.5.4"
+    "typescript": "^5.5.4",
+    "vite": "^7.3.6"
   },
   "build": {
     "appId": "com.imrun.browser",
