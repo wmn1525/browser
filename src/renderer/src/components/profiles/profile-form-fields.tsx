@@ -200,27 +200,6 @@ export function AppsTab({ initialProfile, loadImages, loadVideos, setLoadImages,
   );
 }
 
-export function FingerprintTab({ initialProfile }: { readonly initialProfile?: ProfileDetail }): JSX.Element {
-  return (
-    <FormCard icon={<Monitor className="size-5" />} title="指纹信息">
-      <Field defaultValue={initialProfile?.fingerprint?.platform ?? 'Win32'} label="Platform" name="platform" />
-      <Field defaultValue={initialProfile?.fingerprint?.language ?? 'en-US'} label="接受语言" name="language" />
-      <Field defaultValue={initialProfile?.timezone} label="时区" name="timezone" placeholder="America/New_York" />
-      <Field defaultValue={initialProfile?.fingerprint?.hardwareConcurrency ?? 8} inputMode="numeric" label="CPU Cores" name="cpu" />
-      <Field defaultValue={initialProfile?.fingerprint?.deviceMemory ?? 16} inputMode="numeric" label="Device Memory" name="memory" />
-      <div className="grid grid-cols-[128px_1fr] items-center gap-3">
-        <span className="text-sm text-secondary">分辨率</span>
-        <div className="grid grid-cols-2 gap-3">
-          <Input defaultValue={initialProfile?.fingerprint?.screenWidth ?? 2195} inputMode="numeric" name="screenWidth" />
-          <Input defaultValue={initialProfile?.fingerprint?.screenHeight ?? 1235} inputMode="numeric" name="screenHeight" />
-        </div>
-      </div>
-      <Field defaultValue={initialProfile?.fingerprint?.webglVendor ?? 'Google Inc.'} label="WebGL Vendor" name="webglVendor" />
-      <Field defaultValue={initialProfile?.fingerprint?.webglRenderer ?? 'ANGLE (NVIDIA, NVIDIA GeForce GTX 1070 Direct3D11)'} label="WebGL Renderer" name="webglRenderer" />
-    </FormCard>
-  );
-}
-
 export function SummaryPanel({ onRandomize, summary }: {
   readonly onRandomize: () => void;
   readonly summary: {
@@ -272,7 +251,7 @@ export function FormFooter({ onCancel }: { readonly onCancel: () => void }): JSX
   );
 }
 
-function FormCard({ children, icon, title }: PropsWithChildren<{ readonly icon: JSX.Element; readonly title: string }>): JSX.Element {
+export function FormCard({ children, icon, title }: PropsWithChildren<{ readonly icon: JSX.Element; readonly title: string }>): JSX.Element {
   return (
     <section className="overflow-hidden rounded-xl border bg-card shadow-sm">
       <div className="flex items-center gap-2 border-b px-4 py-3 text-secondary">{icon}<h3 className="font-semibold text-foreground">{title}</h3></div>
@@ -306,7 +285,7 @@ function SelectRow({ defaultValue, label, name, onValueChange, options, required
   return (
     <Label className="grid grid-cols-[128px_1fr] items-center gap-3">
       <span className="text-sm text-secondary">{required ? <span className="mr-1 text-destructive">*</span> : null}{label}</span>
-      <Select defaultValue={defaultValue ?? options[0]} name={name} onValueChange={onValueChange} value={value}>
+      <Select defaultValue={value === undefined ? defaultValue ?? options[0] : undefined} name={name} onValueChange={onValueChange} value={value}>
         <SelectTrigger><SelectValue /></SelectTrigger>
         <SelectContent>{options.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}</SelectContent>
       </Select>
@@ -375,7 +354,7 @@ function SwitchRow({ checked, label, name, onCheckedChange }: {
   );
 }
 
-function Notice({ children }: PropsWithChildren): JSX.Element {
+export function Notice({ children }: PropsWithChildren): JSX.Element {
   return <div className="ml-32 flex gap-2 rounded-lg border border-blue-100 bg-blue-50/70 p-3 text-xs text-primary"><Info className="size-4" />{children}</div>;
 }
 

@@ -34,7 +34,22 @@ export function buildProfileDraft(form: FormData, initialProfile: ProfileDetail 
       screenWidth: numberValue(form.get('screenWidth')),
       screenHeight: numberValue(form.get('screenHeight')),
       webglVendor: text(form.get('webglVendor')),
-      webglRenderer: text(form.get('webglRenderer'))
+      webglRenderer: text(form.get('webglRenderer')),
+      hstsMode: text(form.get('hstsMode')),
+      hstsValue: text(form.get('hstsValue')),
+      webglMode: text(form.get('webglMode')),
+      webglValue: text(form.get('webglValue')),
+      canvasMode: text(form.get('canvasMode')),
+      canvasValue: text(form.get('canvasValue')),
+      pluginsMode: text(form.get('pluginsMode')),
+      pluginsValue: text(form.get('pluginsValue')),
+      rectsMode: text(form.get('rectsMode')),
+      rectsValue: text(form.get('rectsValue')),
+      fontsMode: text(form.get('fontsMode')),
+      fontsValue: text(form.get('fontsValue')),
+      batteryState: text(form.get('batteryState')),
+      bluetoothState: text(form.get('bluetoothState')),
+      networkState: text(form.get('networkState'))
     },
     startUrls: lines(form.get('urls')),
     tags: csv(form.get('tags'))

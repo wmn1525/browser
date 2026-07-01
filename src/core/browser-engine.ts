@@ -289,7 +289,22 @@ export class BrowserEngine {
       screenWidth: fingerprint.screenWidth,
       screenHeight: fingerprint.screenHeight,
       webglVendor: this.cleanText(fingerprint.webglVendor),
-      webglRenderer: this.cleanText(fingerprint.webglRenderer)
+      webglRenderer: this.cleanText(fingerprint.webglRenderer),
+      hstsMode: this.cleanText(fingerprint.hstsMode),
+      hstsValue: this.cleanText(fingerprint.hstsValue),
+      webglMode: this.cleanText(fingerprint.webglMode),
+      webglValue: this.cleanText(fingerprint.webglValue),
+      canvasMode: this.cleanText(fingerprint.canvasMode),
+      canvasValue: this.cleanText(fingerprint.canvasValue),
+      pluginsMode: this.cleanText(fingerprint.pluginsMode),
+      pluginsValue: this.cleanText(fingerprint.pluginsValue),
+      rectsMode: this.cleanText(fingerprint.rectsMode),
+      rectsValue: this.cleanText(fingerprint.rectsValue),
+      fontsMode: this.cleanText(fingerprint.fontsMode),
+      fontsValue: this.cleanText(fingerprint.fontsValue),
+      batteryState: this.cleanText(fingerprint.batteryState),
+      bluetoothState: this.cleanText(fingerprint.bluetoothState),
+      networkState: this.cleanText(fingerprint.networkState)
     };
   }
 

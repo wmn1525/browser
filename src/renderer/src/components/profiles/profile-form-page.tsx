@@ -7,14 +7,14 @@ import {
   AccountTab,
   AppsTab,
   BaseTab,
-  FingerprintTab,
   FormFooter,
   SummaryPanel
 } from './profile-form-fields';
+import { FingerprintTab } from './profile-fingerprint-tab';
 import { getDefaultKernelId, getKernelLabel } from './browser-kernel-options';
 import { buildProfileDraft } from './profile-form-draft';
 import { ProxyTab } from './profile-proxy-tab';
-import { getDefaultOsVersion, getDefaultPreset, getPresetByUserAgent, getPresetsForOs, getRandomPresetForOs } from './user-agent-options';
+import { getDefaultOsVersion, getDefaultPreset, getOsVersionOptions, getPresetByUserAgent, getPresetsForOs, getRandomPresetForOs } from './user-agent-options';
 
 interface ProfileFormPageProps {
   readonly initialProfile?: ProfileDetail;
@@ -34,6 +34,7 @@ export function ProfileFormPage({ initialProfile, onCancel, onSubmit }: ProfileF
   const [downloadingKernelId, setDownloadingKernelId] = useState<string>();
   const [loadImages, setLoadImages] = useState(initialProfile?.loadImages ?? true);
   const [loadVideos, setLoadVideos] = useState(initialProfile?.loadVideos ?? true);
+  const [fingerprintRandomSeed, setFingerprintRandomSeed] = useState(0);
 
   const summary = useMemo(() => ({
     kernel: getKernelLabel(kernel),
@@ -72,10 +73,17 @@ export function ProfileFormPage({ initialProfile, onCancel, onSubmit }: ProfileF
     void refreshKernels();
   }, []);
 
+  useEffect(() => {
+    if (!getOsVersionOptions(os).includes(osVersion)) {
+      setOsVersion(getDefaultOsVersion(os));
+    }
+  }, [os, osVersion]);
+
   function randomizeFingerprint(): void {
     const preset = getRandomPresetForOs(os, uaPresetId);
     setUaPresetId(preset.id);
     setUserAgent(preset.userAgent);
+    setFingerprintRandomSeed((seed) => seed + 1);
   }
 
   function selectOs(nextOs: string): void {
@@ -94,7 +102,6 @@ export function ProfileFormPage({ initialProfile, onCancel, onSubmit }: ProfileF
 
   return (
     <form className="flex min-h-0 flex-1 flex-col" onSubmit={(event) => void handleSubmit(event)}>
-      <Header isEditing={Boolean(initialProfile)} />
       <Tabs className="flex min-h-0 flex-1 flex-col" defaultValue="base">
         <TabsList>
           <TabsTrigger value="base">基础信息</TabsTrigger>
@@ -110,23 +117,12 @@ export function ProfileFormPage({ initialProfile, onCancel, onSubmit }: ProfileF
             <TabsContent forceMount value="proxy"><ProxyTab initialProfile={initialProfile} /></TabsContent>
             <TabsContent forceMount value="account"><AccountTab initialProfile={initialProfile} /></TabsContent>
             <TabsContent forceMount value="apps"><AppsTab initialProfile={initialProfile} loadImages={loadImages} loadVideos={loadVideos} setLoadImages={setLoadImages} setLoadVideos={setLoadVideos} /></TabsContent>
-            <TabsContent forceMount value="fingerprint"><FingerprintTab initialProfile={initialProfile} /></TabsContent>
+            <TabsContent forceMount value="fingerprint"><FingerprintTab initialProfile={initialProfile} os={os} randomSeed={fingerprintRandomSeed} /></TabsContent>
           </div>
           <SummaryPanel onRandomize={randomizeFingerprint} summary={summary} />
         </div>
       </Tabs>
       <FormFooter onCancel={onCancel} />
     </form>
-  );
-}
-
-function Header({ isEditing }: { readonly isEditing: boolean }): JSX.Element {
-  return (
-    <div className="border-b bg-card px-6 py-4">
-      {/* <h2 className="text-lg font-semibold">{isEditing ? '编辑浏览器' : '新建浏览器'}</h2> */}
-      <p className="mt-1 text-xs text-muted-foreground">
-        参考 AdsPower / Octo / GoLogin 的 profile 创建流程，分步配置基础信息、代理、账号、应用和指纹。
-      </p>
-    </div>
   );
 }

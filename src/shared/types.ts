@@ -76,6 +76,21 @@ export interface FingerprintDraft {
   readonly screenHeight?: number;
   readonly webglVendor?: string;
   readonly webglRenderer?: string;
+  readonly hstsMode?: string;
+  readonly hstsValue?: string;
+  readonly webglMode?: string;
+  readonly webglValue?: string;
+  readonly canvasMode?: string;
+  readonly canvasValue?: string;
+  readonly pluginsMode?: string;
+  readonly pluginsValue?: string;
+  readonly rectsMode?: string;
+  readonly rectsValue?: string;
+  readonly fontsMode?: string;
+  readonly fontsValue?: string;
+  readonly batteryState?: string;
+  readonly bluetoothState?: string;
+  readonly networkState?: string;
 }
 
 /** 管理壳展示 profile 时使用的稳定视图模型。 */
