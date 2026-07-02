@@ -1,4 +1,5 @@
 import { app, BrowserWindow, Menu, Tray } from 'electron';
+import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { checkForAppUpdatesAtStartup, registerAppUpdateIpc } from './app-updater';
@@ -6,9 +7,23 @@ import { registerBrowserIpc } from './ipc';
 
 /** Electron 管理壳启动入口。 */
 
+configureDevelopmentDataPath();
+
 let mainWindow: BrowserWindow | undefined;
 let tray: Tray | undefined;
 let isQuitting = false;
+
+/** 开发版和安装版不能共享 Chromium 缓存目录，否则 Windows 目录锁会导致 0x5 拒绝访问。 */
+function configureDevelopmentDataPath(): void {
+  if (app.isPackaged) {
+    return;
+  }
+
+  const userDataPath = join(app.getPath('appData'), `${app.getName()}-dev`);
+  mkdirSync(userDataPath, { recursive: true });
+  app.setPath('userData', userDataPath);
+  app.setPath('sessionData', userDataPath);
+}
 
 /** 创建 Electron 管理壳窗口，业务能力全部经 preload 暴露。 */
 function createMainWindow(): void {
