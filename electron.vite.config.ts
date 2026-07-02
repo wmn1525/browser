@@ -2,6 +2,8 @@ import react from '@vitejs/plugin-react';
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite';
 import { resolve } from 'node:path';
 
+import packageJson from './package.json';
+
 /** 统一使用 Vite 编译 Electron main、preload 和 React renderer。 */
 export default defineConfig({
   main: {
@@ -26,6 +28,9 @@ export default defineConfig({
   },
   renderer: {
     root: resolve(__dirname, 'src/renderer'),
+    define: {
+      __APP_VERSION__: JSON.stringify(packageJson.version)
+    },
     plugins: [react()]
   }
 });

@@ -2,6 +2,11 @@ name: Publish Packages To R2
 
 on:
   workflow_dispatch:
+    inputs:
+      version:
+        description: "打包版本号，留空则使用 package.json 当前版本"
+        required: false
+        type: string
   push:
     tags:
       - "v*"
@@ -46,6 +51,19 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Prepare package version
+        shell: bash
+        run: |
+          version="${{ inputs.version || '' }}"
+          if [ -z "${version}" ] && [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            version="${GITHUB_REF_NAME#v}"
+          fi
+          if [ -z "${version}" ]; then
+            version="$(node -p "require('./package.json').version")"
+          fi
+          version="${version#v}"
+          npm version "${version}" --no-git-tag-version --allow-same-version
 
       - name: Type check
         run: npm run typecheck
