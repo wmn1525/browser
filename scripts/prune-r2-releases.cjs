@@ -66,7 +66,7 @@ function collectVersions(objects) {
 
 function shouldDeleteKey(key, retainedVersions) {
   // win-unpacked 是 electron-builder 的中间产物，不作为下载或更新文件发布。
-  if (key.startsWith(`${prefix}win-unpacked/`)) {
+  if (key.startsWith(`${prefix}win-unpacked/`) || key.startsWith(`${prefix}mac-arm64/`)) {
     return true;
   }
 
