@@ -1,12 +1,8 @@
+import { Button, Input, Modal, Tag } from 'antd';
 import { Edit2, FolderOpen, FolderPlus, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 import type { ProfileGroup, ProfileSummary } from '../../../../shared/types';
-import { Badge } from '../ui/badge';
-import { Button } from '../ui/button';
-import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from '../ui/dialog';
-import { Input } from '../ui/input';
-import { Label } from '../ui/label';
 import { canDeleteGroup, countProfilesByGroup } from '../profiles/profile-groups';
 
 interface LocalGroupsPageProps {
@@ -50,7 +46,7 @@ export function LocalGroupsPage({
           <h2 className="text-2xl font-semibold">分组管理</h2>
           <p className="mt-2 text-sm text-muted-foreground">分组仅保存在本机，用于整理本地浏览器环境。</p>
         </div>
-        <Button onClick={() => setDialog({ mode: 'create' })} type="button"><FolderPlus className="size-4" />新建分组</Button>
+        <Button htmlType="button" onClick={() => setDialog({ mode: 'create' })} type="primary"><FolderPlus className="size-4" />新建分组</Button>
       </div>
 
       <div className="grid gap-3">
@@ -107,14 +103,14 @@ function GroupRow({
         <div className="flex items-center gap-2">
           <FolderOpen className="size-4 text-primary" />
           <h3 className="font-medium">{name}</h3>
-          <Badge tone="muted">{count} 个环境</Badge>
+          <Tag>{count} 个环境</Tag>
         </div>
       </div>
       <div className="flex gap-2">
-        <Button onClick={onOpen} size="sm" type="button" variant="outline">查看环境</Button>
-        {onRename ? <Button onClick={onRename} size="icon" title="重命名" type="button" variant="outline"><Edit2 className="size-4" /></Button> : null}
+        <Button htmlType="button" onClick={onOpen} size="small">查看环境</Button>
+        {onRename ? <Button className="h-8 w-8 p-0" htmlType="button" onClick={onRename} size="small" title="重命名"><Edit2 className="size-4" /></Button> : null}
         {onDelete ? (
-          <Button disabled={!canDelete} onClick={onDelete} size="icon" title="删除空分组" type="button" variant="outline">
+          <Button className="h-8 w-8 p-0" disabled={!canDelete} htmlType="button" onClick={onDelete} size="small" title="删除空分组">
             <Trash2 className="size-4" />
           </Button>
         ) : null}
@@ -143,24 +139,21 @@ function GroupNameDialog({
   }, [initialName, open]);
 
   return (
-    <Dialog onOpenChange={onOpenChange} open={open}>
-      <DialogContent>
-        <DialogTitle>{mode === 'rename' ? '重命名分组' : '新建分组'}</DialogTitle>
-        <DialogDescription>分组只保存在本机，用于整理本地浏览器环境。</DialogDescription>
+    <Modal footer={null} onCancel={() => onOpenChange(false)} open={open} title={mode === 'rename' ? '重命名分组' : '新建分组'}>
+        <p className="text-sm text-muted-foreground">分组只保存在本机，用于整理本地浏览器环境。</p>
         <form className="mt-4 grid gap-4" onSubmit={(event) => {
           event.preventDefault();
           onSubmit(name);
         }}>
-          <Label className="grid gap-2 text-sm text-foreground">
+          <label className="grid gap-2 text-sm text-foreground">
             分组名称
             <Input autoFocus maxLength={32} onChange={(event) => setName(event.target.value)} placeholder="请输入分组名称" value={name} />
-          </Label>
+          </label>
           <div className="flex justify-end gap-2">
-            <DialogClose asChild><Button type="button" variant="outline">取消</Button></DialogClose>
-            <Button type="submit">{mode === 'rename' ? '保存' : '创建'}</Button>
+            <Button htmlType="button" onClick={() => onOpenChange(false)}>取消</Button>
+            <Button htmlType="submit" type="primary">{mode === 'rename' ? '保存' : '创建'}</Button>
           </div>
         </form>
-      </DialogContent>
-    </Dialog>
+    </Modal>
   );
 }

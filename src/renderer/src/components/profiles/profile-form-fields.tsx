@@ -1,20 +1,13 @@
+import { Button, Dropdown, Input, Select, Switch, Tag, type InputProps } from 'antd';
 import { Check, Chrome, Download, Globe, Info, Laptop, Monitor, RefreshCw, Search, ShieldCheck, Smartphone, Terminal } from 'lucide-react';
-import type { InputHTMLAttributes, PropsWithChildren } from 'react';
+import type { PropsWithChildren } from 'react';
 import { useState } from 'react';
 
 import type { BrowserKernelInfo, ProfileDetail, ProfileGroup } from '../../../../shared/types';
-import { cn } from '../../lib/utils';
-import { Badge } from '../ui/badge';
-import { Button } from '../ui/button';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '../ui/dropdown-menu';
-import { Input } from '../ui/input';
-import { Label } from '../ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { Switch } from '../ui/switch';
-import { Textarea } from '../ui/textarea';
 import { browserKernelOptions } from './browser-kernel-options';
 import { getOsVersionOptions, getPresetsForOs, osOptions } from './user-agent-options';
 
+const { TextArea } = Input;
 const searchEngines = ['Google', 'Bing', 'DuckDuckGo'];
 
 interface BaseTabProps {
@@ -92,17 +85,15 @@ function KernelSelect({ downloadingKernelId, kernel, kernels, onDownloadKernel, 
   const [open, setOpen] = useState(false);
 
   return (
-    <Label className="grid grid-cols-[128px_1fr] items-center gap-3">
+    <label className="grid grid-cols-[128px_1fr] items-center gap-3">
       <span className="text-sm text-secondary"><span className="mr-1 text-destructive">*</span>浏览器内核</span>
       <input name="browserKernel" type="hidden" value={kernel} />
-      <DropdownMenu onOpenChange={setOpen} open={open}>
-        <DropdownMenuTrigger asChild>
-          <button className="flex h-9 w-full items-center justify-between rounded-lg bg-muted px-3 text-left text-sm outline-none focus:ring-1 focus:ring-ring" type="button">
-            <span>{selected.label}</span>
-            <span className="text-xs text-muted-foreground">选择内核</span>
-          </button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="max-h-96 w-[420px] overflow-y-auto">
+      <Dropdown
+        menu={{ items: [] }}
+        onOpenChange={setOpen}
+        open={open}
+        popupRender={() => (
+          <div className="max-h-96 w-[420px] overflow-y-auto rounded-lg border bg-card p-1 shadow-lg">
           {browserKernelOptions.map((option) => (
             <KernelRow
               downloading={downloadingKernelId === option.id}
@@ -117,9 +108,16 @@ function KernelSelect({ downloadingKernelId, kernel, kernels, onDownloadKernel, 
               state={kernels.find((item) => item.id === option.id)}
             />
           ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </Label>
+          </div>
+        )}
+        trigger={['click']}
+      >
+        <button className="flex h-9 w-full items-center justify-between rounded-lg bg-muted px-3 text-left text-sm outline-none focus:ring-1 focus:ring-ring" type="button">
+          <span>{selected.label}</span>
+          <span className="text-xs text-muted-foreground">选择内核</span>
+        </button>
+      </Dropdown>
+    </label>
   );
 }
 
@@ -147,7 +145,7 @@ function KernelRow({ downloading, onDownload, onSelect, option, selected, state 
     <div className="flex items-center justify-between gap-3 rounded-md px-2 py-2 text-sm text-muted-foreground opacity-70">
       <KernelMeta option={option} version={version} />
       {canDownload ? (
-        <Button disabled={downloading} onClick={onDownload} size="sm" type="button" variant="outline">
+        <Button disabled={downloading} htmlType="button" onClick={onDownload} size="small">
           <Download className="size-3.5" />{downloading ? '下载中' : '下载'}
         </Button>
       ) : <span className="text-[11px] text-muted-foreground">未检测到</span>}
@@ -174,17 +172,10 @@ function UaPresetSelect({ setUaPreset, uaOptions, uaPresetId }: {
   readonly uaPresetId: string;
 }): JSX.Element {
   return (
-    <Label className="grid grid-cols-[128px_1fr] items-center gap-3">
+    <label className="grid grid-cols-[128px_1fr] items-center gap-3">
       <span className="text-sm text-secondary">UA 预设</span>
-      <Select onValueChange={setUaPreset} value={uaPresetId}>
-        <SelectTrigger><SelectValue /></SelectTrigger>
-        <SelectContent className="max-h-80">
-          {uaOptions.map((preset) => (
-            <SelectItem key={preset.id} value={preset.id}>{preset.label}</SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-    </Label>
+      <Select onChange={setUaPreset} options={uaOptions.map((preset) => ({ label: preset.label, value: preset.id }))} value={uaPresetId} />
+    </label>
   );
 }
 
@@ -230,7 +221,7 @@ export function SummaryPanel({ onRandomize, summary }: {
     <aside className="w-[300px] shrink-0 overflow-y-auto border-l bg-muted/60 p-6">
       <div className="mb-4 flex items-center justify-between">
         <h3 className="font-semibold">概要</h3>
-        <Button onClick={onRandomize} size="sm" type="button"><RefreshCw className="size-4" />生成新指纹</Button>
+        <Button htmlType="button" onClick={onRandomize} size="small" type="primary"><RefreshCw className="size-4" />生成新指纹</Button>
       </div>
       <div className="rounded-xl border bg-card p-4">
         <div className="mb-4 flex items-center gap-3">
@@ -255,12 +246,12 @@ export function FormFooter({ onCancel }: { readonly onCancel: () => void }): JSX
   return (
     <div className="flex items-center justify-between border-t bg-card px-6 py-4">
       <div className="flex gap-3">
-        <Button onClick={onCancel} type="button" variant="outline">取消</Button>
-        <Button type="submit">保存</Button>
+        <Button htmlType="button" onClick={onCancel}>取消</Button>
+        <Button htmlType="submit" type="primary">保存</Button>
       </div>
       <div className="flex items-center gap-3 text-xs">
         <span className="flex items-center gap-1 text-primary"><ShieldCheck className="size-4" />初始化完成</span>
-        <Badge>16/16</Badge>
+        <Tag color="blue">16/16</Tag>
       </div>
     </div>
   );
@@ -275,16 +266,16 @@ export function FormCard({ children, icon, title }: PropsWithChildren<{ readonly
   );
 }
 
-interface FieldProps extends InputHTMLAttributes<HTMLInputElement> {
+interface FieldProps extends InputProps {
   readonly label: string;
 }
 
 function Field({ className, label, ...props }: FieldProps): JSX.Element {
   return (
-    <Label className={cn('grid grid-cols-[128px_1fr] items-center gap-3', className)}>
+    <label className={['grid grid-cols-[128px_1fr] items-center gap-3', className].filter(Boolean).join(' ')}>
       <span className="text-sm text-secondary">{label}</span>
       <Input {...props} />
-    </Label>
+    </label>
   );
 }
 
@@ -300,14 +291,20 @@ function SelectRow({ defaultValue, label, name, onValueChange, options, required
   readonly value?: string;
 }): JSX.Element {
   const firstValue = getOptionValue(options[0]);
+  const [innerValue, setInnerValue] = useState(defaultValue ?? firstValue);
+  const selectedValue = value ?? innerValue;
+
+  function handleChange(nextValue: string): void {
+    setInnerValue(nextValue);
+    onValueChange?.(nextValue);
+  }
+
   return (
-    <Label className="grid grid-cols-[128px_1fr] items-center gap-3">
+    <label className="grid grid-cols-[128px_1fr] items-center gap-3">
       <span className="text-sm text-secondary">{required ? <span className="mr-1 text-destructive">*</span> : null}{label}</span>
-      <Select defaultValue={value === undefined ? defaultValue ?? firstValue : undefined} name={name} onValueChange={onValueChange} value={value}>
-        <SelectTrigger><SelectValue /></SelectTrigger>
-        <SelectContent>{options.map((option) => <SelectItem key={getOptionValue(option)} value={getOptionValue(option)}>{getOptionLabel(option)}</SelectItem>)}</SelectContent>
-      </Select>
-    </Label>
+      <input name={name} type="hidden" value={selectedValue} />
+      <Select onChange={handleChange} options={options.map((option) => ({ label: getOptionLabel(option), value: getOptionValue(option) }))} value={selectedValue} />
+    </label>
   );
 }
 
@@ -328,8 +325,12 @@ function OsPicker({ os, setOs }: { readonly os: string; readonly setOs: (value: 
         {osOptions.map((option) => {
           const Icon = getOsIcon(option.label);
           const active = os === option.label;
+          const className = [
+            'relative flex flex-col items-center gap-2 rounded-lg border p-3 text-xs hover:bg-muted',
+            active ? 'border-primary bg-primary/5 text-primary' : ''
+          ].filter(Boolean).join(' ');
           return (
-            <button className={cn('relative flex flex-col items-center gap-2 rounded-lg border p-3 text-xs hover:bg-muted', active && 'border-primary bg-primary/5 text-primary')} key={option.label} onClick={() => setOs(option.label)} type="button">
+            <button className={className} key={option.label} onClick={() => setOs(option.label)} type="button">
               <Icon className="size-5" />{option.label}
               {option.label === 'Windows' ? <span className="absolute -top-2 right-0 rounded-full bg-orange-400 px-1.5 py-0.5 text-[9px] text-white">推荐</span> : null}
             </button>
@@ -356,13 +357,13 @@ function TextareaRow({ defaultValue, hint, label, name, onChange, value }: {
   readonly value?: string;
 }): JSX.Element {
   return (
-    <Label className="grid grid-cols-[128px_1fr] items-start gap-3">
+    <label className="grid grid-cols-[128px_1fr] items-start gap-3">
       <span className="pt-2 text-sm text-secondary">{label}</span>
       <div>
-        <Textarea defaultValue={defaultValue} name={name} onChange={(event) => onChange?.(event.target.value)} value={value} />
+        <TextArea defaultValue={defaultValue} name={name} onChange={(event) => onChange?.(event.target.value)} value={value} />
         {hint ? <p className="mt-1 text-[11px] text-muted-foreground">{hint}</p> : null}
       </div>
-    </Label>
+    </label>
   );
 }
 
@@ -375,7 +376,8 @@ function SwitchRow({ checked, label, name, onCheckedChange }: {
   return (
     <div className="grid grid-cols-[128px_1fr] items-center gap-3">
       <span className="text-sm text-secondary">{label}</span>
-      <Switch checked={checked} name={name} onCheckedChange={onCheckedChange} />
+      {checked ? <input name={name} type="hidden" value="on" /> : null}
+      <Switch checked={checked} onChange={onCheckedChange} />
     </div>
   );
 }

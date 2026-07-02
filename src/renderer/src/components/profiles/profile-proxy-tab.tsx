@@ -1,12 +1,9 @@
+import { Input, Select, type InputProps } from 'antd';
 import { ShieldCheck } from 'lucide-react';
-import type { InputHTMLAttributes, PropsWithChildren } from 'react';
+import type { PropsWithChildren } from 'react';
 import { useEffect, useState } from 'react';
 
 import type { ProfileDetail, ProxyPoolItem, ProxyType } from '../../../../shared/types';
-import { cn } from '../../lib/utils';
-import { Input } from '../ui/input';
-import { Label } from '../ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
 interface ProxyTabProps {
   readonly initialProfile?: ProfileDetail;
@@ -70,33 +67,30 @@ function ProxyPoolSelect({ onSelect, proxyPool }: {
   readonly proxyPool: readonly ProxyPoolItem[];
 }): JSX.Element {
   return (
-    <Label className="grid grid-cols-[128px_1fr] items-center gap-3">
+    <label className="grid grid-cols-[128px_1fr] items-center gap-3">
       <span className="text-sm text-secondary">代理池</span>
-      <Select onValueChange={onSelect}>
-        <SelectTrigger><SelectValue placeholder="从本地代理池选择" /></SelectTrigger>
-        <SelectContent>
-          <SelectItem value="direct">不使用代理</SelectItem>
-          {proxyPool.map((proxy) => (
-            <SelectItem key={proxy.id} value={proxy.id}>
-              {proxy.host}:{proxy.port} / {proxy.protocol.toUpperCase()}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-    </Label>
+      <Select
+        onChange={onSelect}
+        options={[
+          { label: '不使用代理', value: 'direct' },
+          ...proxyPool.map((proxy) => ({ label: `${proxy.host}:${proxy.port} / ${proxy.protocol.toUpperCase()}`, value: proxy.id }))
+        ]}
+        placeholder="从本地代理池选择"
+      />
+    </label>
   );
 }
 
-interface FieldProps extends InputHTMLAttributes<HTMLInputElement> {
+interface FieldProps extends InputProps {
   readonly label: string;
 }
 
 function Field({ className, label, ...props }: FieldProps): JSX.Element {
   return (
-    <Label className={cn('grid grid-cols-[128px_1fr] items-center gap-3', className)}>
+    <label className={['grid grid-cols-[128px_1fr] items-center gap-3', className].filter(Boolean).join(' ')}>
       <span className="text-sm text-secondary">{label}</span>
       <Input {...props} />
-    </Label>
+    </label>
   );
 }
 
@@ -108,13 +102,11 @@ function SelectRow({ label, name, onValueChange, options, value }: {
   readonly value: string;
 }): JSX.Element {
   return (
-    <Label className="grid grid-cols-[128px_1fr] items-center gap-3">
+    <label className="grid grid-cols-[128px_1fr] items-center gap-3">
       <span className="text-sm text-secondary">{label}</span>
-      <Select name={name} onValueChange={onValueChange} value={value}>
-        <SelectTrigger><SelectValue /></SelectTrigger>
-        <SelectContent>{options.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}</SelectContent>
-      </Select>
-    </Label>
+      <input name={name} type="hidden" value={value} />
+      <Select onChange={onValueChange} options={options.map((option) => ({ label: option, value: option }))} value={value} />
+    </label>
   );
 }
 

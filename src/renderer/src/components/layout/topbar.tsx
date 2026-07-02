@@ -1,10 +1,9 @@
+import { Button, Dropdown, type MenuProps } from 'antd';
 import { Bell, Check, ChevronDown, Download, Mail, RefreshCw, UserCircle } from 'lucide-react';
 import type { PropsWithChildren } from 'react';
 
 import type { BrowserKernelDownloadProgress, BrowserKernelInfo } from '../../../../shared/types';
 import { browserKernelOptions } from '../profiles/browser-kernel-options';
-import { Button } from '../ui/button';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '../ui/dropdown-menu';
 
 interface TopbarProps {
   readonly downloadingKernelId: string | undefined;
@@ -17,6 +16,8 @@ interface TopbarProps {
   readonly onRefresh: () => void;
   readonly title: string;
 }
+
+const emptyMenuItems: MenuProps['items'] = [];
 
 /** 顶部工具栏，所有图标都给出明确操作反馈。 */
 export function Topbar({ downloadingKernelId, kernelProgress, kernels, kernelStatus, onAction, onCheckUpdates, onDownloadKernel, onRefresh, title }: TopbarProps): JSX.Element {
@@ -40,7 +41,7 @@ function HeaderIcon({
   title
 }: PropsWithChildren<{ readonly onClick: () => void; readonly title: string }>): JSX.Element {
   return (
-    <Button onClick={onClick} size="icon" title={title} type="button" variant="ghost">
+    <Button className="h-9 w-9 p-0" htmlType="button" onClick={onClick} title={title} type="text">
       {children}
     </Button>
   );
@@ -58,32 +59,35 @@ function DownloadMenu({ downloadingKernelId, kernelProgress, kernels, kernelStat
   const chromeOptions = kernelOptions.filter((kernel) => kernel.engine === 'chromium');
   const progressPercent = kernelProgress?.percent ?? 0;
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button className="relative overflow-visible" title="下载内核" type="button" variant="secondary">
-          <Download className="size-4" />
-          下载内核
-          <ChevronDown className="size-4 opacity-60" />
-          {downloadingKernelId ? (
-            <span className="absolute -right-2 -top-2 grid min-w-5 place-items-center rounded-full bg-emerald-500 px-1.5 text-[10px] font-bold leading-5 text-white">
-              {progressPercent}%
-            </span>
-          ) : null}
-          {downloadingKernelId ? (
-            <span className="absolute inset-x-2 bottom-1 h-1 overflow-hidden rounded-full bg-emerald-100">
-              <span className="block h-full bg-emerald-500" style={{ width: `${progressPercent}%` }} />
-            </span>
-          ) : null}
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="max-h-[560px] w-[520px] overflow-y-auto p-2">
-        <div className="mb-2 rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground">{kernelStatus}</div>
-        <DropdownMenuSeparator />
-        <KernelDownloadGroup downloadingKernelId={downloadingKernelId} kernelProgress={kernelProgress} kernels={kernels} onDownloadKernel={onDownloadKernel} options={firefoxOptions} title="Firefox / Gecko" />
-        <DropdownMenuSeparator className="my-2" />
-        <KernelDownloadGroup downloadingKernelId={downloadingKernelId} kernelProgress={kernelProgress} kernels={kernels} onDownloadKernel={onDownloadKernel} options={chromeOptions} title="Chrome / Chromium" />
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <Dropdown
+      menu={{ items: emptyMenuItems }}
+      popupRender={() => (
+        <div className="max-h-[560px] w-[520px] overflow-y-auto rounded-lg border bg-card p-2 shadow-lg">
+          <div className="mb-2 rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground">{kernelStatus}</div>
+          <div className="my-2 h-px bg-border" />
+          <KernelDownloadGroup downloadingKernelId={downloadingKernelId} kernelProgress={kernelProgress} kernels={kernels} onDownloadKernel={onDownloadKernel} options={firefoxOptions} title="Firefox / Gecko" />
+          <div className="my-2 h-px bg-border" />
+          <KernelDownloadGroup downloadingKernelId={downloadingKernelId} kernelProgress={kernelProgress} kernels={kernels} onDownloadKernel={onDownloadKernel} options={chromeOptions} title="Chrome / Chromium" />
+        </div>
+      )}
+      trigger={['click']}
+    >
+      <Button className="relative overflow-visible" htmlType="button" title="下载内核">
+        <Download className="size-4" />
+        下载内核
+        <ChevronDown className="size-4 opacity-60" />
+        {downloadingKernelId ? (
+          <span className="absolute -right-2 -top-2 grid min-w-5 place-items-center rounded-full bg-emerald-500 px-1.5 text-[10px] font-bold leading-5 text-white">
+            {progressPercent}%
+          </span>
+        ) : null}
+        {downloadingKernelId ? (
+          <span className="absolute inset-x-2 bottom-1 h-1 overflow-hidden rounded-full bg-emerald-100">
+            <span className="block h-full bg-emerald-500" style={{ width: `${progressPercent}%` }} />
+          </span>
+        ) : null}
+      </Button>
+    </Dropdown>
   );
 }
 
@@ -145,7 +149,7 @@ function KernelDownloadRow({ downloading, onDownload, option, progress, state }:
           </span>
         </span>
       ) : (
-        <Button className="justify-self-end" disabled={downloading} onClick={onDownload} size="sm" type="button" variant="outline">
+        <Button className="justify-self-end" disabled={downloading} htmlType="button" onClick={onDownload} size="small">
           <Download className="size-3.5" />{downloading ? '下载中' : '下载'}
         </Button>
       )}
@@ -164,24 +168,30 @@ function AccountMenu({ onAction, onCheckUpdates }: {
   readonly onAction: (action: string) => void;
   readonly onCheckUpdates: () => void;
 }): JSX.Element {
+  const items: MenuProps['items'] = [
+    { key: 'settings', icon: <UserCircle className="size-4" />, label: '账号设置' },
+    { key: 'team', label: '团队权限' },
+    { key: 'logs', label: '操作日志' },
+    { type: 'divider' },
+    { key: 'updates', icon: <RefreshCw className="size-4" />, label: '检查更新' }
+  ];
+
+  function handleMenuClick({ key }: { readonly key: string }): void {
+    if (key === 'settings') onAction('账号设置待接入');
+    if (key === 'team') onAction('团队权限待接入');
+    if (key === 'logs') onAction('操作日志待接入');
+    if (key === 'updates') onCheckUpdates();
+  }
+
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <button className="ml-2 flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-muted" type="button">
-          <div className="grid size-8 place-items-center rounded-full bg-teal-500 text-xs font-bold text-white">AD</div>
-          <div className="text-left text-xs">
-            <strong className="block">admin</strong>
-            <span className="text-muted-foreground">企业管理员</span>
-          </div>
-        </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={() => onAction('账号设置待接入')}><UserCircle className="size-4" />账号设置</DropdownMenuItem>
-        <DropdownMenuItem onClick={() => onAction('团队权限待接入')}>团队权限</DropdownMenuItem>
-        <DropdownMenuItem onClick={() => onAction('操作日志待接入')}>操作日志</DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={onCheckUpdates}><RefreshCw className="size-4" />检查更新</DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <Dropdown menu={{ items, onClick: handleMenuClick }} trigger={['click']}>
+      <button className="ml-2 flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-muted" type="button">
+        <div className="grid size-8 place-items-center rounded-full bg-teal-500 text-xs font-bold text-white">AD</div>
+        <div className="text-left text-xs">
+          <strong className="block">admin</strong>
+          <span className="text-muted-foreground">企业管理员</span>
+        </div>
+      </button>
+    </Dropdown>
   );
 }

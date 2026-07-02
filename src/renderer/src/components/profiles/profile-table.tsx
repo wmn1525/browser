@@ -1,19 +1,8 @@
+import { Button, Checkbox, Dropdown, Tag, Tooltip, type MenuProps } from 'antd';
 import { Copy, Download, Eye, Laptop, MoreVertical, Pencil, Play, Power, Settings, Trash2, UserPlus } from 'lucide-react';
 import type { PropsWithChildren } from 'react';
 
 import type { ProfileGroup, ProfileSummary } from '../../../../shared/types';
-import { Badge } from '../ui/badge';
-import { Button } from '../ui/button';
-import { Checkbox } from '../ui/checkbox';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger
-} from '../ui/dropdown-menu';
-import { Table, Td, Th } from '../ui/table';
-import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 import { getGroupLabel } from './profile-groups';
 
 export type ProfileCommand =
@@ -47,14 +36,14 @@ export function ProfileTable({
 
   return (
     <div className="min-w-[980px] overflow-hidden rounded-lg border bg-card shadow-sm">
-      <Table>
+      <table className="w-full border-collapse text-left text-sm">
         <thead>
           <tr>
             <Th className="w-11">
               <Checkbox
                 checked={allSelected}
-                onCheckedChange={(checked) => {
-                  onSelectedIdsChange(checked ? profiles.map((profile) => profile.id) : []);
+                onChange={(event) => {
+                  onSelectedIdsChange(event.target.checked ? profiles.map((profile) => profile.id) : []);
                 }}
               />
             </Th>
@@ -74,8 +63,8 @@ export function ProfileTable({
               <Td>
                 <Checkbox
                   checked={selectedIds.includes(profile.id)}
-                  onCheckedChange={(checked) => {
-                    onSelectedIdsChange(toggleSelected(selectedIds, profile.id, Boolean(checked)));
+                  onChange={(event) => {
+                    onSelectedIdsChange(toggleSelected(selectedIds, profile.id, event.target.checked));
                   }}
                 />
               </Td>
@@ -88,7 +77,7 @@ export function ProfileTable({
                 </div>
               </Td>
               <Td className={profile.name ? '' : 'text-muted-foreground'}>{profile.name || '————'}</Td>
-              <Td><Badge tone={profile.groupId ? 'primary' : 'muted'}>{getGroupLabel(groups, profile.groupId)}</Badge></Td>
+              <Td><Tag color={profile.groupId ? 'blue' : 'default'}>{getGroupLabel(groups, profile.groupId)}</Tag></Td>
               <Td className="text-xs text-muted-foreground">{formatRelativeTime(profile.lastLaunchedAt)}</Td>
               <Td><Tags tags={profile.tags} /></Td>
               <Td className="max-w-48 truncate text-xs text-muted-foreground">{profile.proxyLabel === 'Direct' ? '直连环境' : profile.proxyLabel}</Td>
@@ -101,7 +90,7 @@ export function ProfileTable({
             </tr>
           ))}
         </tbody>
-      </Table>
+      </table>
       {profiles.length === 0 ? <div className="p-9 text-center text-muted-foreground">还没有浏览器环境</div> : null}
     </div>
   );
@@ -111,7 +100,7 @@ function Tags({ tags }: { readonly tags: readonly string[] }): JSX.Element {
   const visibleTags = tags.length > 0 ? tags : ['无标签'];
   return (
     <div className="flex flex-wrap gap-1">
-      {visibleTags.map((tag) => <Badge key={tag}>{tag}</Badge>)}
+      {visibleTags.map((tag) => <Tag key={tag}>{tag}</Tag>)}
     </div>
   );
 }
@@ -125,7 +114,7 @@ function RowActionButton({
 }): JSX.Element {
   if (profile.isRunning) {
     return (
-      <Button onClick={() => onCommand('close', profile.id)} size="sm" type="button" variant="destructive">
+      <Button danger htmlType="button" onClick={() => onCommand('close', profile.id)} size="small">
         <Power className="size-4" />
         关闭
       </Button>
@@ -133,7 +122,7 @@ function RowActionButton({
   }
 
   return (
-    <Button onClick={() => onCommand('launch', profile.id)} size="sm" type="button">
+    <Button htmlType="button" onClick={() => onCommand('launch', profile.id)} size="small" type="primary">
       <Play className="size-4" />
       启动
     </Button>
@@ -147,22 +136,23 @@ function ProfileMoreMenu({
   readonly onCommand: ProfileTableProps['onCommand'];
   readonly profile: ProfileSummary;
 }): JSX.Element {
+  const items: MenuProps['items'] = [
+    { key: 'detail', icon: <Eye className="size-4" />, label: '查看详情' },
+    { key: 'edit', icon: <Pencil className="size-4" />, label: '编辑' },
+    { key: 'duplicate', icon: <Copy className="size-4" />, label: '复制' },
+    { key: 'export', icon: <Download className="size-4" />, label: '导出 JSON' },
+    { type: 'divider' },
+    { danger: true, key: 'delete', icon: <Trash2 className="size-4" />, label: '删除' }
+  ];
+
+  function handleMenuClick({ key }: { readonly key: string }): void {
+    onCommand(key as ProfileCommand, profile.id);
+  }
+
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button className="h-8 w-8" size="icon" type="button" variant="ghost"><MoreVertical className="size-4" /></Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={() => onCommand('detail', profile.id)}><Eye className="size-4" />查看详情</DropdownMenuItem>
-        <DropdownMenuItem onClick={() => onCommand('edit', profile.id)}><Pencil className="size-4" />编辑</DropdownMenuItem>
-        <DropdownMenuItem onClick={() => onCommand('duplicate', profile.id)}><Copy className="size-4" />复制</DropdownMenuItem>
-        <DropdownMenuItem onClick={() => onCommand('export', profile.id)}><Download className="size-4" />导出 JSON</DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => onCommand('delete', profile.id)}>
-          <Trash2 className="size-4" />删除
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <Dropdown menu={{ items, onClick: handleMenuClick }} trigger={['click']}>
+      <Button className="h-8 w-8 p-0" htmlType="button" type="text"><MoreVertical className="size-4" /></Button>
+    </Dropdown>
   );
 }
 
@@ -172,15 +162,20 @@ function IconButton({
   title
 }: PropsWithChildren<{ readonly onClick: () => void; readonly title: string }>): JSX.Element {
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <Button className="h-7 w-7" onClick={onClick} size="icon" title={title} type="button" variant="ghost">
-          {children}
-        </Button>
-      </TooltipTrigger>
-      <TooltipContent>{title}</TooltipContent>
+    <Tooltip title={title}>
+      <Button className="h-7 w-7 p-0" htmlType="button" onClick={onClick} title={title} type="text">
+        {children}
+      </Button>
     </Tooltip>
   );
+}
+
+function Th({ children, className }: PropsWithChildren<{ readonly className?: string }>): JSX.Element {
+  return <th className={['border-b bg-muted px-3 py-2 text-xs font-semibold text-secondary', className].filter(Boolean).join(' ')}>{children}</th>;
+}
+
+function Td({ children, className }: PropsWithChildren<{ readonly className?: string }>): JSX.Element {
+  return <td className={['border-b px-3 py-3 align-middle', className].filter(Boolean).join(' ')}>{children}</td>;
 }
 
 function toggleSelected(selectedIds: readonly string[], profileId: string, checked: boolean): readonly string[] {

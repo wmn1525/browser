@@ -1,12 +1,9 @@
+import { Button, Input, Select } from 'antd';
 import { Monitor, RefreshCw } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import type { ProfileDetail } from '../../../../shared/types';
-import { Button } from '../ui/button';
-import { Input } from '../ui/input';
-import { Label } from '../ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import {
   batteryStateOptions,
   bluetoothStateOptions,
@@ -81,7 +78,7 @@ export function FingerprintTab({ initialProfile, os, randomSeed }: {
     <FormCard icon={<Monitor className="size-5" />} title="指纹信息">
       <Notice>优先保持语言、时区、平台与代理地区一致；GPU 和设备参数不确定时使用常见预设。</Notice>
       <div className="ml-32 flex justify-end">
-        <Button onClick={() => setValues(getRandomValues(os))} size="sm" type="button"><RefreshCw className="size-4" />随机指纹</Button>
+        <Button htmlType="button" onClick={() => setValues(getRandomValues(os))} size="small" type="primary"><RefreshCw className="size-4" />随机指纹</Button>
       </div>
       <Section title="语言与时区">
         <SelectField label="系统平台" name="platform" onChange={(platform) => setValues({ ...values, platform })} options={platformChoices} value={values.platform} />
@@ -127,10 +124,8 @@ function FingerprintModeRow({ label, mode, modeName, onChange, value, valueName 
     <div className="grid grid-cols-[128px_1fr] items-center gap-3">
       <span className="text-sm text-secondary">{label}</span>
       <div className="grid grid-cols-[minmax(160px,220px)_1fr] gap-3">
-        <Select name={modeName} onValueChange={onChange} value={mode}>
-          <SelectTrigger><SelectValue /></SelectTrigger>
-          <SelectContent>{fingerprintModeOptions.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent>
-        </Select>
+        <input name={modeName} type="hidden" value={mode} />
+        <Select onChange={onChange} options={[...fingerprintModeOptions]} value={mode} />
         <Input name={valueName} readOnly value={mode === 'random' ? value : 'native'} />
       </div>
     </div>
@@ -154,13 +149,11 @@ function SelectField({ label, name, onChange, options, value }: {
   readonly value: string;
 }): JSX.Element {
   return (
-    <Label className="grid grid-cols-[128px_1fr] items-center gap-3">
+    <label className="grid grid-cols-[128px_1fr] items-center gap-3">
       <span className="text-sm text-secondary">{label}</span>
-      <Select name={name} onValueChange={onChange} value={value}>
-        <SelectTrigger><SelectValue /></SelectTrigger>
-        <SelectContent>{options.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent>
-      </Select>
-    </Label>
+      <input name={name} type="hidden" value={value} />
+      <Select onChange={onChange} options={[...options]} value={value} />
+    </label>
   );
 }
 
@@ -174,10 +167,7 @@ function ResolutionSelect({ onChange, options, screen }: {
       <span className="text-sm text-secondary">分辨率</span>
       <input name="screenWidth" type="hidden" value={screen.width} />
       <input name="screenHeight" type="hidden" value={screen.height} />
-      <Select onValueChange={(value) => onChange(findScreen(options, value))} value={screen.value}>
-        <SelectTrigger><SelectValue /></SelectTrigger>
-        <SelectContent>{options.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent>
-      </Select>
+      <Select onChange={(value) => onChange(findScreen(options, value))} options={options.map((option) => ({ label: option.label, value: option.value }))} value={screen.value} />
     </div>
   );
 }
@@ -192,20 +182,17 @@ function GpuSelect({ gpu, onChange, options }: {
       <span className="text-sm text-secondary">显卡预设</span>
       <input name="webglVendor" type="hidden" value={gpu.vendor} />
       <input name="webglRenderer" type="hidden" value={gpu.renderer} />
-      <Select onValueChange={(value) => onChange(findGpu(options, value))} value={gpu.value}>
-        <SelectTrigger><SelectValue /></SelectTrigger>
-        <SelectContent>{options.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent>
-      </Select>
+      <Select onChange={(value) => onChange(findGpu(options, value))} options={options.map((option) => ({ label: option.label, value: option.value }))} value={gpu.value} />
     </div>
   );
 }
 
 function ReadonlyField({ label, value }: { readonly label: string; readonly value: string }): JSX.Element {
   return (
-    <Label className="grid grid-cols-[128px_1fr] items-center gap-3">
+    <label className="grid grid-cols-[128px_1fr] items-center gap-3">
       <span className="text-sm text-secondary">{label}</span>
       <Input readOnly value={value} />
-    </Label>
+    </label>
   );
 }
 

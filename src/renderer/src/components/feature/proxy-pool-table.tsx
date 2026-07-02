@@ -1,7 +1,6 @@
+import { Button, Checkbox, Tag } from 'antd';
 import { Copy, Pencil, RefreshCw, Trash2 } from 'lucide-react';
 
-import { Badge } from '../ui/badge';
-import { Button } from '../ui/button';
 import type { ProxyPoolItem, ProxyPoolStatus } from './proxy-pool-types';
 
 interface ProxyTableProps {
@@ -32,7 +31,7 @@ export function ProxyTable({
     <table className="w-full border-collapse text-left text-sm">
       <thead>
         <tr className="border-b bg-muted/70 text-xs text-muted-foreground">
-          <th className="w-12 px-4 py-3"><input checked={allVisibleSelected} onChange={onToggleAll} type="checkbox" /></th>
+          <th className="w-12 px-4 py-3"><Checkbox checked={allVisibleSelected} onChange={onToggleAll} /></th>
           <th className="px-4 py-3 font-medium">编号</th>
           <th className="px-4 py-3 font-medium">出口 IP</th>
           <th className="px-4 py-3 font-medium">备注</th>
@@ -88,7 +87,7 @@ function ProxyRow({
 }): JSX.Element {
   return (
     <tr className="hover:bg-primary/5">
-      <td className="px-4 py-3"><input checked={selected} onChange={onToggle} type="checkbox" /></td>
+      <td className="px-4 py-3"><Checkbox checked={selected} onChange={onToggle} /></td>
       <td className="px-4 py-3">{index}</td>
       <td className="px-4 py-3">
         <div className="text-xs">
@@ -101,18 +100,18 @@ function ProxyRow({
       <td className="px-4 py-3">
         <div className="flex items-center gap-2">
           <span className="font-medium">{proxy.host}:{proxy.port}</span>
-          <Badge tone="primary">{proxy.protocol.toUpperCase()}</Badge>
+          <Tag color="blue">{proxy.protocol.toUpperCase()}</Tag>
         </div>
       </td>
       <td className="px-4 py-3">
-        <div className="flex flex-wrap gap-1">{proxy.tags.length ? proxy.tags.map((tag) => <Badge key={tag}>{tag}</Badge>) : <Badge>未标签</Badge>}</div>
+        <div className="flex flex-wrap gap-1">{proxy.tags.length ? proxy.tags.map((tag) => <Tag key={tag}>{tag}</Tag>) : <Tag>未标签</Tag>}</div>
       </td>
       <td className="px-4 py-3">
         <div className="flex items-center gap-2">
-          <Button onClick={onCheck} size="sm" type="button" variant="ghost"><RefreshCw className="size-3.5" /></Button>
-          <Button onClick={onCopy} size="sm" type="button" variant="ghost"><Copy className="size-3.5" /></Button>
-          <Button onClick={onEdit} size="sm" type="button" variant="ghost"><Pencil className="size-3.5" /></Button>
-          <Button onClick={onDelete} size="sm" type="button" variant="ghost"><Trash2 className="size-3.5" /></Button>
+          <Button className="h-7 w-7 p-0" htmlType="button" onClick={onCheck} size="small" type="text"><RefreshCw className="size-3.5" /></Button>
+          <Button className="h-7 w-7 p-0" htmlType="button" onClick={onCopy} size="small" type="text"><Copy className="size-3.5" /></Button>
+          <Button className="h-7 w-7 p-0" htmlType="button" onClick={onEdit} size="small" type="text"><Pencil className="size-3.5" /></Button>
+          <Button className="h-7 w-7 p-0" danger htmlType="button" onClick={onDelete} size="small" type="text"><Trash2 className="size-3.5" /></Button>
         </div>
       </td>
     </tr>

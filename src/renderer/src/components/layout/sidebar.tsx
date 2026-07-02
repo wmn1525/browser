@@ -1,7 +1,7 @@
+import { Button } from 'antd';
 import { AppWindow, Bolt, CloudCog, Folder, Globe2, Grid2X2, Plus, Users } from 'lucide-react';
 
 import type { ModuleKey } from '../feature/feature-page';
-import { Button } from '../ui/button';
 
 interface SidebarProps {
   readonly activeModule: ModuleKey;
@@ -30,7 +30,7 @@ export function Sidebar({ activeModule, onCreateProfile, onNavigate }: SidebarPr
         <p className="mt-1 text-[10px] uppercase text-muted-foreground">v 0.1.8</p>
       </div>
 
-      <Button className="mb-4 w-full" onClick={onCreateProfile} type="button">
+      <Button className="mb-4 w-full" htmlType="button" onClick={onCreateProfile} type="primary">
         <Plus className="size-4" />
         新建浏览器
       </Button>

@@ -1,8 +1,7 @@
+import { Button, Input, Modal } from 'antd';
 import type { PropsWithChildren } from 'react';
 
-import { Button } from './components/ui/button';
-import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from './components/ui/dialog';
-import { Textarea } from './components/ui/textarea';
+const { TextArea } = Input;
 
 export interface FeaturePanel {
   readonly title: string;
@@ -16,18 +15,15 @@ export function FeatureDialog({ onClose, panel }: {
   readonly panel: FeaturePanel | undefined;
 }): JSX.Element {
   return (
-    <Dialog onOpenChange={(open) => { if (!open) onClose(); }} open={Boolean(panel)}>
-      <DialogContent>
-        <DialogTitle>{panel?.title}</DialogTitle>
-        <DialogDescription>{panel?.description}</DialogDescription>
+    <Modal footer={null} onCancel={onClose} open={Boolean(panel)} title={panel?.title}>
+        <p className="text-sm text-muted-foreground">{panel?.description}</p>
         <div className="mt-4 rounded-lg border bg-muted/40 p-4">
           <ul className="grid gap-2 text-sm">
             {(panel?.items ?? []).map((item) => <li className="rounded-md bg-card px-3 py-2" key={item}>{item}</li>)}
           </ul>
         </div>
-        <DialogFooter><Button type="button">完成</Button></DialogFooter>
-      </DialogContent>
-    </Dialog>
+        <DialogFooter><Button htmlType="button" onClick={onClose} type="primary">完成</Button></DialogFooter>
+    </Modal>
   );
 }
 
@@ -38,17 +34,14 @@ export function PreviewDialog({ onOpenChange, text, title }: {
   readonly title: string;
 }): JSX.Element {
   return (
-    <Dialog onOpenChange={(open) => { if (!open) onOpenChange(); }} open={text.length > 0}>
-      <DialogContent className="w-[min(760px,calc(100vw-48px))]">
-        <DialogTitle>{title}</DialogTitle>
-        <DialogDescription>内容已生成，可检查后复制或保存。</DialogDescription>
-        <Textarea className="mt-4 min-h-80 font-mono text-xs" readOnly value={text} />
-        <DialogFooter><Button type="button">关闭</Button></DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <Modal footer={null} onCancel={onOpenChange} open={text.length > 0} title={title} width={760}>
+        <p className="text-sm text-muted-foreground">内容已生成，可检查后复制或保存。</p>
+        <TextArea className="mt-4 min-h-80 font-mono text-xs" readOnly value={text} />
+        <DialogFooter><Button htmlType="button" onClick={onOpenChange} type="primary">关闭</Button></DialogFooter>
+    </Modal>
   );
 }
 
 function DialogFooter({ children }: PropsWithChildren): JSX.Element {
-  return <div className="mt-4 flex justify-end"><DialogClose asChild>{children}</DialogClose></div>;
+  return <div className="mt-4 flex justify-end">{children}</div>;
 }

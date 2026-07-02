@@ -27,8 +27,6 @@ import { Filterbar } from './components/profiles/filterbar';
 import { ProfileFormPage } from './components/profiles/profile-form-page';
 import { ProfileTable, type ProfileCommand } from './components/profiles/profile-table';
 import { canDeleteGroup, createLocalGroup, getGroupLabel } from './components/profiles/profile-groups';
-import { ToastProvider } from './components/ui/toast';
-import { TooltipProvider } from './components/ui/tooltip';
 import { useAppUpdates } from './hooks/use-app-updates';
 import { useBrowserKernels } from './hooks/use-browser-kernels';
 
@@ -291,9 +289,7 @@ export function App(): JSX.Element {
   const pageTitle = formMode ? (formMode === 'edit' ? '编辑浏览器' : '新建浏览器') : (activeFeaturePage?.title ?? '环境管理');
 
   return (
-    <TooltipProvider>
-      <ToastProvider>
-        <div className="h-screen overflow-hidden bg-background text-foreground">
+    <div className="h-screen overflow-hidden bg-background text-foreground">
         <WindowTitlebar />
         <div className="flex h-[calc(100vh-34px)] overflow-hidden">
           <Sidebar activeModule={activeModule} onCreateProfile={() => {
@@ -382,8 +378,6 @@ export function App(): JSX.Element {
         <PreviewDialog onOpenChange={() => setPreviewText('')} text={previewText} title={previewTitle} />
         <FeatureDialog onClose={() => setFeaturePanel(undefined)} panel={featurePanel} />
         <AppUpdateDialog event={appUpdates.event} onDownload={() => void appUpdates.downloadUpdate()} onInstall={() => void appUpdates.installUpdate()} onOpenChange={appUpdates.setOpen} onSkip={appUpdates.skipVersion} open={appUpdates.open} />
-        </div>
-      </ToastProvider>
-    </TooltipProvider>
+    </div>
   );
 }

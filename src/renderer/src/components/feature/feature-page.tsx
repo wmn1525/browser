@@ -1,8 +1,6 @@
+import { Button, Divider, Tag } from 'antd';
 import { ArrowRight, CheckCircle2, ExternalLink } from 'lucide-react';
 
-import { Badge } from '../ui/badge';
-import { Button } from '../ui/button';
-import { Separator } from '../ui/separator';
 import type { ProfileGroup, ProfileSummary } from '../../../../shared/types';
 import { LocalGroupsPage } from './local-groups-page';
 import { ProxyPoolPage } from './proxy-pool-page';
@@ -76,7 +74,7 @@ export function FeaturePage({
           <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">{config.summary}</p>
         </div>
         <div className="flex flex-wrap justify-end gap-2">
-          {config.docRefs.map((ref) => <Badge key={ref} tone="muted">{ref}</Badge>)}
+          {config.docRefs.map((ref) => <Tag key={ref}>{ref}</Tag>)}
         </div>
       </div>
 
@@ -97,11 +95,11 @@ export function FeaturePage({
               ))}
             </div>
 
-            <Separator className="my-4" />
+            <Divider className="my-4" />
 
             <div className="flex flex-wrap gap-2">
               {card.actions.map((action) => (
-                <Button key={action.label} onClick={() => onAction(action.message)} size="sm" type="button" variant="outline">
+                <Button htmlType="button" key={action.label} onClick={() => onAction(action.message)} size="small">
                   {action.label}
                   {action.label.includes('文档') ? <ExternalLink className="size-3.5" /> : <ArrowRight className="size-3.5" />}
                 </Button>

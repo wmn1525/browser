@@ -1,9 +1,7 @@
+import { Button, Input, Select } from 'antd';
 import { Bookmark, RefreshCw, Search, Settings, Trash2, X } from 'lucide-react';
 
 import type { ProfileGroup } from '../../../../shared/types';
-import { Button } from '../ui/button';
-import { Input } from '../ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
 interface FilterbarProps {
   readonly activeGroupId: string;
@@ -19,7 +17,7 @@ interface FilterbarProps {
   readonly tagKeyword: string;
 }
 
-/** Profile 筛选栏，使用 Radix Select 保证下拉交互质量。 */
+/** Profile 筛选栏，使用 antd Select 保证下拉交互质量。 */
 export function Filterbar({
   activeGroupId,
   groups,
@@ -52,11 +50,11 @@ export function Filterbar({
       <FilterSelect options={[{ label: '全部创建人', value: 'all' }, { label: 'admin', value: 'admin' }]} placeholder="请选择创建人" value="all" />
       <Input className="w-64" onChange={(event) => onTagKeywordChange(event.target.value)} placeholder="请选择标签 (可多选)" value={tagKeyword} />
       <div className="ml-auto flex gap-2">
-        <Button onClick={onRefresh} size="icon" title="刷新" type="button" variant="outline"><RefreshCw className="size-4" /></Button>
-        <Button onClick={onDeleteSelected} size="icon" title="删除" type="button" variant="outline"><Trash2 className="size-4" /></Button>
-        <Button onClick={() => onAction('已加入收藏视图')} size="icon" title="收藏" type="button" variant="outline"><Bookmark className="size-4" /></Button>
-        <Button onClick={() => onAction('表格列设置待接入')} size="icon" title="设置" type="button" variant="outline"><Settings className="size-4" /></Button>
-        <Button onClick={onClear} size="icon" title="清空筛选" type="button" variant="outline"><X className="size-4" /></Button>
+        <Button className="h-9 w-9 p-0" htmlType="button" onClick={onRefresh} title="刷新"><RefreshCw className="size-4" /></Button>
+        <Button className="h-9 w-9 p-0" htmlType="button" onClick={onDeleteSelected} title="删除"><Trash2 className="size-4" /></Button>
+        <Button className="h-9 w-9 p-0" htmlType="button" onClick={() => onAction('已加入收藏视图')} title="收藏"><Bookmark className="size-4" /></Button>
+        <Button className="h-9 w-9 p-0" htmlType="button" onClick={() => onAction('表格列设置待接入')} title="设置"><Settings className="size-4" /></Button>
+        <Button className="h-9 w-9 p-0" htmlType="button" onClick={onClear} title="清空筛选"><X className="size-4" /></Button>
       </div>
     </section>
   );
@@ -69,11 +67,6 @@ function FilterSelect({ onValueChange, options, placeholder, value }: {
   readonly value: string;
 }): JSX.Element {
   return (
-    <Select onValueChange={onValueChange} value={value}>
-      <SelectTrigger className="w-48"><SelectValue placeholder={placeholder} /></SelectTrigger>
-      <SelectContent>
-        {options.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}
-      </SelectContent>
-    </Select>
+    <Select className="w-48" onChange={onValueChange} options={[...options]} placeholder={placeholder} value={value} />
   );
 }

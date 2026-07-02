@@ -1,8 +1,7 @@
+import { Button, Modal } from 'antd';
 import { Download, RotateCcw, ShieldCheck } from 'lucide-react';
 
 import type { AppUpdateEvent } from '../../../../shared/types';
-import { Button } from '../ui/button';
-import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from '../ui/dialog';
 
 interface AppUpdateDialogProps {
   readonly event: AppUpdateEvent | undefined;
@@ -26,10 +25,8 @@ export function AppUpdateDialog({
   const update = event?.update;
   const progress = event?.progress?.percent ?? 0;
   return (
-    <Dialog onOpenChange={onOpenChange} open={open}>
-      <DialogContent className="w-[min(520px,calc(100vw-48px))]">
-        <DialogTitle>{getDialogTitle(status, update?.version)}</DialogTitle>
-        <DialogDescription>{getDialogDescription(event)}</DialogDescription>
+    <Modal footer={null} onCancel={() => onOpenChange(false)} open={open} title={getDialogTitle(status, update?.version)} width={520}>
+        <p className="text-sm text-muted-foreground">{getDialogDescription(event)}</p>
         {status === 'downloading' ? (
           <div className="mt-4">
             <div className="mb-2 flex justify-between text-xs text-muted-foreground">
@@ -49,19 +46,18 @@ export function AppUpdateDialog({
         <div className="mt-5 flex justify-end gap-2">
           {status === 'available' ? (
             <>
-              <Button onClick={onSkip} type="button" variant="outline">跳过此版本</Button>
-              <Button onClick={onDownload} type="button"><Download className="size-4" />立即下载</Button>
+              <Button htmlType="button" onClick={onSkip}>跳过此版本</Button>
+              <Button htmlType="button" onClick={onDownload} type="primary"><Download className="size-4" />立即下载</Button>
             </>
           ) : null}
           {status === 'downloaded' ? (
-            <Button onClick={onInstall} type="button"><RotateCcw className="size-4" />重启安装</Button>
+            <Button htmlType="button" onClick={onInstall} type="primary"><RotateCcw className="size-4" />重启安装</Button>
           ) : null}
           {status === 'not-available' || status === 'error' ? (
-            <DialogClose asChild><Button type="button"><ShieldCheck className="size-4" />知道了</Button></DialogClose>
+            <Button htmlType="button" onClick={() => onOpenChange(false)} type="primary"><ShieldCheck className="size-4" />知道了</Button>
           ) : null}
         </div>
-      </DialogContent>
-    </Dialog>
+    </Modal>
   );
 }
 

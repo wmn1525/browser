@@ -1,10 +1,8 @@
+import { Button, Input, Select, message as antdMessage } from 'antd';
 import { Plus, RefreshCw, Search } from 'lucide-react';
 import type { FormEvent } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 
-import { Button } from '../ui/button';
-import { Input } from '../ui/input';
-import { useToast } from '../ui/toast';
 import { ProxyImportDialog } from './proxy-pool-dialog';
 import { parseProxyPoolInput } from './proxy-pool-import';
 import { ProxyTable } from './proxy-pool-table';
@@ -21,7 +19,6 @@ export function ProxyPoolPage(): JSX.Element {
   const [editingProxy, setEditingProxy] = useState<ProxyPoolItem>();
   const [importText, setImportText] = useState('');
   const [message, setMessage] = useState('准备就绪');
-  const { showToast } = useToast();
 
   useEffect(() => {
     void loadProxyPool();
@@ -61,7 +58,7 @@ export function ProxyPoolPage(): JSX.Element {
     const draft = formToProxyDraft(new FormData(event.currentTarget));
     if (!draft) {
       setMessage('请填写完整代理地址和端口');
-      showToast('请填写完整代理地址和端口', 'error');
+      void antdMessage.error('请填写完整代理地址和端口');
       return;
     }
 
@@ -78,7 +75,7 @@ export function ProxyPoolPage(): JSX.Element {
     const drafts = parseProxyPoolInput(importText);
     if (drafts.length === 0) {
       setMessage('没有解析到可导入的代理');
-      showToast('没有解析到可导入的代理', 'error');
+      void antdMessage.error('没有解析到可导入的代理');
       return;
     }
 
@@ -97,7 +94,7 @@ export function ProxyPoolPage(): JSX.Element {
       .map((draft, index) => toProxyItem(draft, index));
     if (nextItems.length === 0) {
       setMessage('没有新增代理');
-      showToast('没有新增代理', 'error');
+      void antdMessage.error('没有新增代理');
       return false;
     }
 
@@ -125,7 +122,7 @@ export function ProxyPoolPage(): JSX.Element {
   function checkProxies(ids: readonly string[]): void {
     if (ids.length === 0) {
       setMessage('请先选择代理');
-      showToast('请先选择代理', 'error');
+      void antdMessage.error('请先选择代理');
       return;
     }
 
@@ -141,11 +138,11 @@ export function ProxyPoolPage(): JSX.Element {
       await window.browserShell.saveProxyPool(items);
       setProxies(items);
       setMessage(nextMessage);
-      showToast(nextMessage);
+      void antdMessage.success(nextMessage);
       return true;
     } catch {
       setMessage('代理池保存失败');
-      showToast('代理池保存失败', 'error');
+      void antdMessage.error('代理池保存失败');
       return false;
     }
   }
@@ -160,8 +157,8 @@ export function ProxyPoolPage(): JSX.Element {
             </button>
           </div>
           <div className="flex gap-2">
-            <Button onClick={() => checkProxies(selectedIds)} type="button" variant="outline"><RefreshCw className="size-4" />检测所选</Button>
-            <Button onClick={() => openAddDialog('batch')} type="button"><Plus className="size-4" />新增导入</Button>
+            <Button htmlType="button" onClick={() => checkProxies(selectedIds)}><RefreshCw className="size-4" />检测所选</Button>
+            <Button htmlType="button" onClick={() => openAddDialog('batch')} type="primary"><Plus className="size-4" />新增导入</Button>
           </div>
         </div>
         <div className="mt-4 flex items-center justify-between gap-3">
@@ -169,17 +166,18 @@ export function ProxyPoolPage(): JSX.Element {
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input className="pl-9" onChange={(event) => setKeyword(event.target.value)} placeholder="搜索 IP、Host、备注、标签" value={keyword} />
           </div>
-          <select
-            className="h-9 rounded-lg border-0 bg-muted px-3 text-sm outline-none"
-            onChange={(event) => setStatusFilter(toStatusFilter(event.target.value))}
+          <Select
+            className="w-36"
+            onChange={(value) => setStatusFilter(toStatusFilter(value))}
+            options={[
+              { label: '全部状态', value: 'all' },
+              { label: '未检测', value: 'unchecked' },
+              { label: '检测中', value: 'checking' },
+              { label: '可用', value: 'ok' },
+              { label: '失败', value: 'failed' }
+            ]}
             value={statusFilter}
-          >
-            <option value="all">全部状态</option>
-            <option value="unchecked">未检测</option>
-            <option value="checking">检测中</option>
-            <option value="ok">可用</option>
-            <option value="failed">失败</option>
-          </select>
+          />
         </div>
       </div>
 

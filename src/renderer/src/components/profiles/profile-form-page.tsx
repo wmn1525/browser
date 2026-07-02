@@ -1,8 +1,8 @@
+import { Tabs } from 'antd';
 import type { FormEvent } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 
 import type { BrowserKernelInfo, ProfileDetail, ProfileDraft, ProfileGroup } from '../../../../shared/types';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import {
   AccountTab,
   AppsTab,
@@ -103,26 +103,21 @@ export function ProfileFormPage({ groups, initialProfile, onCancel, onSubmit }: 
 
   return (
     <form className="flex min-h-0 flex-1 flex-col" onSubmit={(event) => void handleSubmit(event)}>
-      <Tabs className="flex min-h-0 flex-1 flex-col" defaultValue="base">
-        <TabsList>
-          <TabsTrigger value="base">基础信息</TabsTrigger>
-          <TabsTrigger value="proxy">代理配置</TabsTrigger>
-          <TabsTrigger value="account">账号平台</TabsTrigger>
-          <TabsTrigger value="apps">应用配置</TabsTrigger>
-          <TabsTrigger value="fingerprint">指纹信息</TabsTrigger>
-        </TabsList>
-
-        <div className="flex min-h-0 flex-1">
-          <div className="min-w-0 flex-1 overflow-y-auto bg-background p-6">
-            <TabsContent forceMount value="base"><BaseTab downloadingKernelId={downloadingKernelId} groups={groups} initialProfile={initialProfile} kernel={kernel} kernels={kernels} onDownloadKernel={(id) => void downloadKernel(id)} os={os} osVersion={osVersion} setKernel={setKernel} setOs={selectOs} setOsVersion={setOsVersion} setUserAgent={setUserAgent} setUaPreset={selectUaPreset} uaPresetId={uaPresetId} userAgent={userAgent} /></TabsContent>
-            <TabsContent forceMount value="proxy"><ProxyTab initialProfile={initialProfile} /></TabsContent>
-            <TabsContent forceMount value="account"><AccountTab initialProfile={initialProfile} /></TabsContent>
-            <TabsContent forceMount value="apps"><AppsTab initialProfile={initialProfile} loadImages={loadImages} loadVideos={loadVideos} setLoadImages={setLoadImages} setLoadVideos={setLoadVideos} /></TabsContent>
-            <TabsContent forceMount value="fingerprint"><FingerprintTab initialProfile={initialProfile} os={os} randomSeed={fingerprintRandomSeed} /></TabsContent>
-          </div>
-          <SummaryPanel onRandomize={randomizeFingerprint} summary={summary} />
+      <div className="flex min-h-0 flex-1">
+        <div className="min-w-0 flex-1 overflow-y-auto bg-background p-6">
+          <Tabs
+            defaultActiveKey="base"
+            items={[
+              { children: <BaseTab downloadingKernelId={downloadingKernelId} groups={groups} initialProfile={initialProfile} kernel={kernel} kernels={kernels} onDownloadKernel={(id) => void downloadKernel(id)} os={os} osVersion={osVersion} setKernel={setKernel} setOs={selectOs} setOsVersion={setOsVersion} setUserAgent={setUserAgent} setUaPreset={selectUaPreset} uaPresetId={uaPresetId} userAgent={userAgent} />, forceRender: true, key: 'base', label: '基础信息' },
+              { children: <ProxyTab initialProfile={initialProfile} />, forceRender: true, key: 'proxy', label: '代理配置' },
+              { children: <AccountTab initialProfile={initialProfile} />, forceRender: true, key: 'account', label: '账号平台' },
+              { children: <AppsTab initialProfile={initialProfile} loadImages={loadImages} loadVideos={loadVideos} setLoadImages={setLoadImages} setLoadVideos={setLoadVideos} />, forceRender: true, key: 'apps', label: '应用配置' },
+              { children: <FingerprintTab initialProfile={initialProfile} os={os} randomSeed={fingerprintRandomSeed} />, forceRender: true, key: 'fingerprint', label: '指纹信息' }
+            ]}
+          />
         </div>
-      </Tabs>
+        <SummaryPanel onRandomize={randomizeFingerprint} summary={summary} />
+      </div>
       <FormFooter onCancel={onCancel} />
     </form>
   );

@@ -1,10 +1,10 @@
+import { Button, Input, Modal, Select } from 'antd';
 import type { FormEvent } from 'react';
+import { useState } from 'react';
 
-import { Button } from '../ui/button';
-import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from '../ui/dialog';
-import { Input } from '../ui/input';
-import { Textarea } from '../ui/textarea';
 import type { ProxyPoolItem } from './proxy-pool-types';
+
+const { TextArea } = Input;
 
 interface ProxyImportDialogProps {
   readonly editingProxy?: ProxyPoolItem;
@@ -31,53 +31,57 @@ export function ProxyImportDialog({
   open
 }: ProxyImportDialogProps): JSX.Element {
   return (
-    <Dialog onOpenChange={onOpenChange} open={open}>
-      <DialogContent className="w-[min(680px,calc(100vw-48px))]">
-        <DialogTitle>{editingProxy ? '编辑代理' : '新增导入'}</DialogTitle>
-        <DialogDescription>支持 HTTP、HTTPS、SOCKS5。</DialogDescription>
+    <Modal footer={null} onCancel={() => onOpenChange(false)} open={open} title={editingProxy ? '编辑代理' : '新增导入'} width={680}>
+        <p className="text-sm text-muted-foreground">支持 HTTP、HTTPS、SOCKS5。</p>
         {editingProxy ? null : (
           <div className="mt-4 flex gap-2">
-            <Button onClick={() => onModeChange('batch')} type="button" variant={mode === 'batch' ? 'default' : 'outline'}>批量导入</Button>
-            <Button onClick={() => onModeChange('single')} type="button" variant={mode === 'single' ? 'default' : 'outline'}>单个新增</Button>
+            <Button htmlType="button" onClick={() => onModeChange('batch')} type={mode === 'batch' ? 'primary' : 'default'}>批量导入</Button>
+            <Button htmlType="button" onClick={() => onModeChange('single')} type={mode === 'single' ? 'primary' : 'default'}>单个新增</Button>
           </div>
         )}
         {mode === 'batch' && !editingProxy ? (
           <div className="mt-4">
-            <Textarea
+            <TextArea
               className="min-h-48 font-mono text-xs"
               onChange={(event) => onImportTextChange(event.target.value)}
               placeholder="http://user:pass@host:port&#10;host:port:user:pass"
               value={importText}
             />
             <div className="mt-4 flex justify-end gap-2">
-              <DialogClose asChild><Button type="button" variant="outline">取消</Button></DialogClose>
-              <Button onClick={onBatchSubmit} type="button">导入</Button>
+              <Button htmlType="button" onClick={() => onOpenChange(false)}>取消</Button>
+              <Button htmlType="button" onClick={onBatchSubmit} type="primary">导入</Button>
             </div>
           </div>
         ) : (
           <form className="mt-4 grid gap-3" key={editingProxy?.id ?? 'new-proxy'} onSubmit={onSingleSubmit}>
             <ProxyFormFields editingProxy={editingProxy} />
             <div className="flex justify-end gap-2">
-              <DialogClose asChild><Button type="button" variant="outline">取消</Button></DialogClose>
-              <Button type="submit">保存</Button>
+              <Button htmlType="button" onClick={() => onOpenChange(false)}>取消</Button>
+              <Button htmlType="submit" type="primary">保存</Button>
             </div>
           </form>
         )}
-      </DialogContent>
-    </Dialog>
+    </Modal>
   );
 }
 
 function ProxyFormFields({ editingProxy }: { readonly editingProxy?: ProxyPoolItem }): JSX.Element {
+  const [protocol, setProtocol] = useState(editingProxy?.protocol ?? 'http');
+
   return (
     <>
       <div className="grid grid-cols-[120px_1fr] items-center gap-3">
         <label className="text-right text-sm text-muted-foreground">代理类型</label>
-        <select className="h-9 rounded-lg border-0 bg-muted px-3 text-sm outline-none" defaultValue={editingProxy?.protocol ?? 'http'} name="protocol">
-          <option value="http">HTTP</option>
-          <option value="https">HTTPS</option>
-          <option value="socks5">SOCKS5</option>
-        </select>
+        <input name="protocol" type="hidden" value={protocol} />
+        <Select
+          onChange={setProtocol}
+          options={[
+            { label: 'HTTP', value: 'http' },
+            { label: 'HTTPS', value: 'https' },
+            { label: 'SOCKS5', value: 'socks5' }
+          ]}
+          value={protocol}
+        />
       </div>
       <FormInput defaultValue={editingProxy?.host} label="代理地址" name="host" placeholder="proxy.example.com" />
       <FormInput defaultValue={editingProxy?.port} label="端口号" name="port" placeholder="8080" />
