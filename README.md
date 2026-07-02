@@ -115,6 +115,20 @@ src/shared/                main、preload 和 renderer 共用 DTO
 - Apple Silicon Mac 安装包格式：DMG、ZIP
 - 更新源：`https://browser.im-run.com/publish/`
 
+## CI 打包发布
+
+- `Build Windows`：手动触发 Windows x64 打包，并把 `release/*` 保存为 GitHub artifact。
+- `Publish Packages To R2`：手动触发或推送 `v*` 标签时，同时打 Windows x64 与 macOS arm64 包，并上传 `release/*` 到 Cloudflare R2。
+
+R2 上传需要在 GitHub 仓库配置以下 Secrets：
+
+- `CF_R2_ACCOUNT_ID`
+- `CF_R2_ACCESS_KEY_ID`
+- `CF_R2_SECRET_ACCESS_KEY`
+- `CF_R2_BUCKET`
+
+可选配置仓库 Variable `CF_R2_PREFIX`，默认上传到 `publish/` 前缀。
+
 ## 开发约定
 
 - renderer 不直接访问 Node.js 能力，所有本地能力通过 preload API 调用。

@@ -1,0 +1,83 @@
+name: Publish Packages To R2
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: Build ${{ matrix.name }} and upload
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows x64
+            os: windows-latest
+            artifact: imrun-browser-win-x64
+            command: npm run dist:win
+          - name: macOS arm64
+            os: macos-latest
+            artifact: imrun-browser-mac-arm64
+            command: npm run dist:mac-arm64
+
+    env:
+      # macOS 未配置签名证书时允许 CI 完成测试打包。
+      CSC_IDENTITY_AUTO_DISCOVERY: "false"
+      R2_ACCOUNT_ID: ${{ secrets.CF_R2_ACCOUNT_ID }}
+      R2_BUCKET: ${{ secrets.CF_R2_BUCKET }}
+      R2_PREFIX: ${{ vars.CF_R2_PREFIX || 'publish' }}
+      R2_ENDPOINT: https://${{ secrets.CF_R2_ACCOUNT_ID }}.r2.cloudflarestorage.com
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Build package
+        run: ${{ matrix.command }}
+
+      - name: Validate R2 config
+        shell: bash
+        env:
+          R2_ACCESS_KEY_ID: ${{ secrets.CF_R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.CF_R2_SECRET_ACCESS_KEY }}
+        run: |
+          test -n "${R2_ACCOUNT_ID}" || { echo "Missing secret CF_R2_ACCOUNT_ID"; exit 1; }
+          test -n "${R2_ACCESS_KEY_ID}" || { echo "Missing secret CF_R2_ACCESS_KEY_ID"; exit 1; }
+          test -n "${R2_SECRET_ACCESS_KEY}" || { echo "Missing secret CF_R2_SECRET_ACCESS_KEY"; exit 1; }
+          test -n "${R2_BUCKET}" || { echo "Missing secret CF_R2_BUCKET"; exit 1; }
+
+      - name: Upload GitHub artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: release/*
+          if-no-files-found: error
+
+      - name: Upload to Cloudflare R2
+        shell: bash
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.CF_R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.CF_R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          AWS_EC2_METADATA_DISABLED: "true"
+        run: |
+          aws s3 sync release "s3://${R2_BUCKET}/${R2_PREFIX}/" \
+            --endpoint-url "${R2_ENDPOINT}"
