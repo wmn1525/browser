@@ -338,7 +338,7 @@ export function App(): JSX.Element {
                   onTagKeywordChange={setTagKeyword}
                   tagKeyword={tagKeyword}
                 />
-                <section className="flex-1 overflow-auto p-6">
+                <section className="flex min-h-0 flex-1 flex-col overflow-hidden p-6">
                   <BatchToolbar onAction={(action) => void handleBatchAction(action)} selectedCount={selectedIds.length} />
                   <ProfileTable
                     groups={groups}
