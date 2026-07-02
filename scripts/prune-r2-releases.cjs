@@ -1,4 +1,5 @@
 const { execFileSync } = require('node:child_process');
+const { rmSync, writeFileSync } = require('node:fs');
 const path = require('node:path');
 
 // 清理 R2 发布目录：保留最近版本安装包，删除旧版本文件和误传的解包目录。
@@ -23,17 +24,26 @@ if (deleteKeys.length === 0) {
   process.exit(0);
 }
 
+let deletePayloadIndex = 0;
 for (const keys of chunk(deleteKeys, 1000)) {
-  execFileSync('aws', [
-    's3api',
-    'delete-objects',
-    '--bucket',
-    bucket,
-    '--endpoint-url',
-    endpoint,
-    '--delete',
-    JSON.stringify({ Objects: keys.map((Key) => ({ Key })) })
-  ], { stdio: 'inherit' });
+  const payloadFile = `.r2-delete-objects-${process.pid}-${deletePayloadIndex}.json`;
+  deletePayloadIndex += 1;
+  writeFileSync(payloadFile, JSON.stringify({ Objects: keys.map((Key) => ({ Key })) }));
+
+  try {
+    execFileSync('aws', [
+      's3api',
+      'delete-objects',
+      '--bucket',
+      bucket,
+      '--endpoint-url',
+      endpoint,
+      '--delete',
+      `file://${payloadFile}`
+    ], { stdio: 'inherit' });
+  } finally {
+    rmSync(payloadFile, { force: true });
+  }
 }
 
 console.log(`R2 cleanup deleted ${deleteKeys.length} object(s). Retained versions: ${[...retainedVersions].join(', ') || '-'}`);
