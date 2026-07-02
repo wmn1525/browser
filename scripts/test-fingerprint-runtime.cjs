@@ -78,5 +78,14 @@ assert.match(source, /navigator\.userAgentData/);
 assert.match(source, /screen\.colorDepth/);
 assert.match(source, /serviceWorker/);
 assert.match(source, /gpu/);
+assert.doesNotMatch(source, /slice\(0, 0\)/);
+
+const zeroSaltSource = buildChromiumFingerprintPatchSource({
+  fingerprint: {
+    rectsMode: 'global',
+    rectsValue: 'F'
+  }
+});
+assert.match(zeroSaltSource, /"domRectSalt":0/);
 
 console.log('fingerprint runtime tests passed');

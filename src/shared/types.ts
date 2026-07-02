@@ -72,31 +72,83 @@ export interface ProxyPoolDraft {
   readonly tags: readonly string[];
 }
 
-/** 常用指纹字段，保持小而清晰，后续可按检测面继续扩展。 */
+/** 指纹检测面的运行策略，对齐参考配置并避免用散落字符串表达模式。 */
+export type FingerprintHookMode = 'default' | 'value' | 'page' | 'browser' | 'domain' | 'global' | 'enabled' | 'disabled';
+
+/** Chromium 运行时支持的 Canvas 和 Audio 处理方式。 */
+export type FingerprintNoiseMode = 'noise' | 'real';
+
+/** Chromium 运行时支持的 WebRTC 处理方式。 */
+export type FingerprintWebRtcMode = 'disable' | 'fake' | 'real';
+
+/** 屏幕运行时配置会传给核心库和补充注入脚本共同使用。 */
+export interface FingerprintScreenDraft {
+  readonly width: number;
+  readonly height: number;
+  readonly deviceScaleFactor?: number;
+}
+
+/** WebGL 运行时配置保存浏览器对外暴露的厂商与渲染器。 */
+export interface FingerprintWebGlDraft {
+  readonly vendor?: string;
+  readonly renderer?: string;
+}
+
+/** Chromium Client Hints 的可保存配置，避免用宽泛对象承载。 */
+export interface ClientHintsDraft {
+  readonly platform?: string;
+  readonly platformVersion?: string;
+  readonly architecture?: string;
+  readonly mobile?: boolean;
+  readonly brandVersion?: string;
+}
+
+/** 常用指纹字段，保持小而清晰，按参考检测面覆盖表单和运行时。 */
 export interface FingerprintDraft {
+  readonly userAgent?: string;
   readonly platform?: string;
   readonly language?: string;
+  readonly languages?: string;
   readonly hardwareConcurrency?: number;
   readonly deviceMemory?: number;
+  readonly screen?: FingerprintScreenDraft;
   readonly screenWidth?: number;
   readonly screenHeight?: number;
+  readonly screenColorDepth?: number;
+  readonly screenPixelDepth?: number;
+  readonly webgl?: FingerprintWebGlDraft;
   readonly webglVendor?: string;
   readonly webglRenderer?: string;
-  readonly hstsMode?: string;
+  readonly hstsMode?: FingerprintHookMode;
   readonly hstsValue?: string;
-  readonly webglMode?: string;
+  readonly webglMode?: FingerprintHookMode;
   readonly webglValue?: string;
-  readonly canvasMode?: string;
+  readonly canvasMode?: FingerprintHookMode;
   readonly canvasValue?: string;
-  readonly pluginsMode?: string;
+  readonly canvas?: FingerprintNoiseMode;
+  readonly pluginsMode?: FingerprintHookMode;
   readonly pluginsValue?: string;
-  readonly rectsMode?: string;
+  readonly rectsMode?: FingerprintHookMode;
   readonly rectsValue?: string;
-  readonly fontsMode?: string;
+  readonly fontsMode?: FingerprintHookMode;
   readonly fontsValue?: string;
   readonly batteryState?: string;
   readonly bluetoothState?: string;
   readonly networkState?: string;
+  readonly clientHintsMode?: FingerprintHookMode;
+  readonly clientHintsPlatform?: string;
+  readonly clientHintsPlatformVersion?: string;
+  readonly clientHintsArchitecture?: string;
+  readonly clientHintsMobile?: boolean;
+  readonly clientHintsBrandVersion?: string;
+  readonly audioMode?: FingerprintHookMode;
+  readonly audioValue?: string;
+  readonly audio?: FingerprintNoiseMode;
+  readonly webgpuMode?: FingerprintHookMode;
+  readonly webgpuValue?: string;
+  readonly webrtcMode?: FingerprintHookMode;
+  readonly webrtc?: FingerprintWebRtcMode;
+  readonly serviceWorkerMode?: FingerprintHookMode;
 }
 
 /** 管理壳展示 profile 时使用的稳定视图模型。 */

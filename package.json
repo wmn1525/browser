@@ -18,6 +18,7 @@
   "dependencies": {
     "@aitofy/browser-profiles": "^0.2.12",
     "antd": "^6.5.0",
+    "chrome-remote-interface": "^0.33.3",
     "electron-updater": "^6.8.9",
     "find-process": "^2.1.1",
     "lucide-react": "^0.468.0",

@@ -2,6 +2,9 @@ import type { ProfileConfig, ProxyConfig, StoredProfile } from '@aitofy/browser-
 
 import type {
   FingerprintDraft,
+  FingerprintHookMode,
+  FingerprintNoiseMode,
+  FingerprintWebRtcMode,
   ProfileDetail,
   ProfileDraft,
   ProfileSummary,
@@ -54,7 +57,7 @@ export function normalizeProfileDraft(draft: ProfileDraft): ExtendedProfileConfi
     loadVideos: draft.loadVideos,
     proxy: normalizeProxy(draft.proxy),
     timezone: cleanText(draft.timezone),
-    fingerprint: normalizeFingerprint(draft.fingerprint),
+    fingerprint: normalizeFingerprint(draft.fingerprint, draft.userAgent),
     startUrls: draft.startUrls.map((url) => url.trim()).filter(Boolean),
     tags: draft.tags.map((tag) => tag.trim()).filter(Boolean)
   };
@@ -112,36 +115,105 @@ function normalizeProxy(proxy: ProxyDraft | undefined): ProxyDraft | undefined {
   };
 }
 
-function normalizeFingerprint(fingerprint: FingerprintDraft | undefined): FingerprintDraft | undefined {
+/** 将表单指纹字段整理成业务字段与核心库运行时字段共用的结构。 */
+function normalizeFingerprint(fingerprint: FingerprintDraft | undefined, userAgent: string | undefined): FingerprintDraft | undefined {
   if (!fingerprint) {
     return undefined;
   }
 
+  const screen = fingerprint.screenWidth && fingerprint.screenHeight
+    ? { width: fingerprint.screenWidth, height: fingerprint.screenHeight }
+    : undefined;
+  const webgl = fingerprint.webglVendor || fingerprint.webglRenderer
+    ? { vendor: cleanText(fingerprint.webglVendor), renderer: cleanText(fingerprint.webglRenderer) }
+    : undefined;
+
   return {
+    userAgent: cleanText(userAgent),
     platform: cleanText(fingerprint.platform),
     language: cleanText(fingerprint.language),
+    languages: cleanText(fingerprint.languages),
     hardwareConcurrency: fingerprint.hardwareConcurrency,
     deviceMemory: fingerprint.deviceMemory,
+    screen,
     screenWidth: fingerprint.screenWidth,
     screenHeight: fingerprint.screenHeight,
+    screenColorDepth: fingerprint.screenColorDepth,
+    screenPixelDepth: fingerprint.screenPixelDepth,
+    webgl,
     webglVendor: cleanText(fingerprint.webglVendor),
     webglRenderer: cleanText(fingerprint.webglRenderer),
-    hstsMode: cleanText(fingerprint.hstsMode),
+    hstsMode: cleanHookMode(fingerprint.hstsMode),
     hstsValue: cleanText(fingerprint.hstsValue),
-    webglMode: cleanText(fingerprint.webglMode),
+    webglMode: cleanHookMode(fingerprint.webglMode),
     webglValue: cleanText(fingerprint.webglValue),
-    canvasMode: cleanText(fingerprint.canvasMode),
+    canvasMode: cleanHookMode(fingerprint.canvasMode),
     canvasValue: cleanText(fingerprint.canvasValue),
-    pluginsMode: cleanText(fingerprint.pluginsMode),
+    canvas: toNoiseMode(fingerprint.canvasMode),
+    pluginsMode: cleanHookMode(fingerprint.pluginsMode),
     pluginsValue: cleanText(fingerprint.pluginsValue),
-    rectsMode: cleanText(fingerprint.rectsMode),
+    rectsMode: cleanHookMode(fingerprint.rectsMode),
     rectsValue: cleanText(fingerprint.rectsValue),
-    fontsMode: cleanText(fingerprint.fontsMode),
+    fontsMode: cleanHookMode(fingerprint.fontsMode),
     fontsValue: cleanText(fingerprint.fontsValue),
     batteryState: cleanText(fingerprint.batteryState),
     bluetoothState: cleanText(fingerprint.bluetoothState),
-    networkState: cleanText(fingerprint.networkState)
+    networkState: cleanText(fingerprint.networkState),
+    clientHintsMode: cleanHookMode(fingerprint.clientHintsMode),
+    clientHintsPlatform: cleanText(fingerprint.clientHintsPlatform),
+    clientHintsPlatformVersion: cleanText(fingerprint.clientHintsPlatformVersion),
+    clientHintsArchitecture: cleanText(fingerprint.clientHintsArchitecture),
+    clientHintsMobile: fingerprint.clientHintsMobile,
+    clientHintsBrandVersion: cleanText(fingerprint.clientHintsBrandVersion),
+    audioMode: cleanHookMode(fingerprint.audioMode),
+    audioValue: cleanText(fingerprint.audioValue),
+    audio: toNoiseMode(fingerprint.audioMode),
+    webgpuMode: cleanHookMode(fingerprint.webgpuMode),
+    webgpuValue: cleanText(fingerprint.webgpuValue),
+    webrtcMode: cleanHookMode(fingerprint.webrtcMode),
+    webrtc: toWebRtcMode(fingerprint.webrtcMode),
+    serviceWorkerMode: cleanHookMode(fingerprint.serviceWorkerMode)
   };
+}
+
+/** 只接受表单声明过的模式值，避免把任意字符串写入 profile。 */
+function cleanHookMode(value: FingerprintHookMode | string | undefined): FingerprintHookMode | undefined {
+  switch (value) {
+    case 'default':
+    case 'value':
+    case 'page':
+    case 'browser':
+    case 'domain':
+    case 'global':
+    case 'enabled':
+    case 'disabled':
+      return value;
+    default:
+      return undefined;
+  }
+}
+
+/** 随机和自定义模式都表示需要扰动对应检测面。 */
+function toNoiseMode(value: FingerprintHookMode | string | undefined): FingerprintNoiseMode | undefined {
+  const mode = cleanHookMode(value);
+  if (!mode || mode === 'default' || mode === 'disabled') {
+    return undefined;
+  }
+
+  return 'noise';
+}
+
+/** WebRTC 的禁用模式映射到核心库支持的运行时值。 */
+function toWebRtcMode(value: FingerprintHookMode | string | undefined): FingerprintWebRtcMode | undefined {
+  const mode = cleanHookMode(value);
+  if (mode === 'disabled') {
+    return 'disable';
+  }
+  if (mode === 'enabled') {
+    return 'fake';
+  }
+
+  return undefined;
 }
 
 /** 统一把空字符串折叠为 undefined，避免写入无意义字段。 */

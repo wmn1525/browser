@@ -11,6 +11,7 @@ import type {
 import type { StoredProfile } from '@aitofy/browser-profiles';
 import type { LaunchResult as BrowserLaunchResult } from '@aitofy/browser-profiles';
 import { BrowserKernelManager } from './browser-kernel-manager';
+import { injectChromiumFingerprintPatch } from './chromium-fingerprint-runtime';
 import { FirefoxProfileLauncher } from './firefox-profile-launcher';
 import {
   normalizeProfileDraft,
@@ -95,13 +96,14 @@ export class BrowserEngine {
 
   /** 启动指定 profile，浏览器进程由 @aitofy/browser-profiles 接管。 */
   public async launchProfile(idOrName: string): Promise<LaunchResult> {
-    const profile = await this.profiles.get(idOrName);
-    const extendedProfile: ExtendedStoredProfile | undefined = profile ?? undefined;
-    const kernel = await this.kernels.resolveKernel(extendedProfile?.browserKernel);
+    const profile = await this.profiles.getByIdOrName(idOrName);
+    if (!profile) {
+      throw new Error(`Profile not found: ${idOrName}`);
+    }
+
+    const extendedProfile: ExtendedStoredProfile = profile;
+    const kernel = await this.kernels.resolveKernel(extendedProfile.browserKernel);
     if (kernel.engine === 'firefox') {
-      if (!extendedProfile) {
-        throw new Error(`Profile not found: ${idOrName}`);
-      }
       return this.launchFirefoxProfile(extendedProfile, kernel.executablePath);
     }
 
@@ -111,6 +113,7 @@ export class BrowserEngine {
     });
 
     const profileId = session.profileId;
+    await injectChromiumFingerprintPatch(session.port, extendedProfile);
     this.runningProfiles.add(profileId);
     this.startBrowserMonitor(profileId, session.port);
     this.notifyChanged();
@@ -231,6 +234,11 @@ export class BrowserEngine {
     const session = await this.firefox.launch({
       id: profile.id,
       proxy: toProxyDraft(profile.proxy),
+      userAgent: profile.userAgent,
+      timezone: profile.timezone,
+      fingerprint: profile.fingerprint,
+      loadImages: profile.loadImages,
+      loadVideos: profile.loadVideos,
       startUrls: profile.startUrls ?? []
     }, executablePath, (profileId) => this.markBrowserClosed(profileId));
     this.runningProfiles.add(session.profileId);

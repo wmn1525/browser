@@ -3,13 +3,18 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 
-import type { ProxyDraft } from '../shared/types';
+import type { FingerprintDraft, ProxyDraft } from '../shared/types';
 import { findFirefoxProfileProcesses, killProcessTree } from './firefox-process';
 
 /** Firefox 启动所需的 profile 快照，避免启动器依赖完整业务 DTO。 */
 export interface FirefoxLaunchProfile {
   readonly id: string;
   readonly proxy?: ProxyDraft;
+  readonly userAgent?: string;
+  readonly timezone?: string;
+  readonly fingerprint?: FingerprintDraft;
+  readonly loadImages?: boolean;
+  readonly loadVideos?: boolean;
   readonly startUrls: readonly string[];
 }
 
@@ -48,7 +53,7 @@ export class FirefoxProfileLauncher {
   ): Promise<FirefoxLaunchResult> {
     const profileDir = this.getProfileDir(profile.id);
     await mkdir(profileDir, { recursive: true });
-    await this.writeUserPrefs(profile.proxy, profileDir);
+    await this.writeUserPrefs(profile, profileDir);
 
     const session: FirefoxRunningSession = {
       profileDir,
@@ -117,9 +122,12 @@ export class FirefoxProfileLauncher {
     return join(this.root, profileId);
   }
 
-  /** Firefox 通过 user.js 固化本次启动的代理偏好。 */
-  private async writeUserPrefs(proxy: ProxyDraft | undefined, profileDir: string): Promise<void> {
-    const lines = proxy ? this.getProxyPrefs(proxy) : ['user_pref("network.proxy.type", 0);'];
+  /** Firefox 通过 user.js 固化本次启动的代理与可稳定生效的指纹偏好。 */
+  private async writeUserPrefs(profile: FirefoxLaunchProfile, profileDir: string): Promise<void> {
+    const lines = [
+      ...(profile.proxy ? this.getProxyPrefs(profile.proxy) : ['user_pref("network.proxy.type", 0);']),
+      ...this.getFingerprintPrefs(profile)
+    ];
     await writeFile(join(profileDir, 'user.js'), `${lines.join('\n')}\n`, 'utf8');
   }
 
@@ -147,6 +155,44 @@ export class FirefoxProfileLauncher {
       `user_pref("network.proxy.ssl_port", ${proxy.port});`,
       'user_pref("network.proxy.no_proxies_on", "");'
     ];
+  }
+
+  /** 只写 Firefox 原生 prefs 支持的字段，避免承诺 JS 注入级伪装。 */
+  private getFingerprintPrefs(profile: FirefoxLaunchProfile): readonly string[] {
+    const lines: string[] = [];
+    const fingerprint = profile.fingerprint;
+    if (profile.userAgent) {
+      lines.push(`user_pref("general.useragent.override", "${escapePref(profile.userAgent)}");`);
+    }
+    if (profile.timezone) {
+      lines.push(`user_pref("intl.timezone.override", "${escapePref(profile.timezone)}");`);
+    }
+
+    const languages = this.getLanguageList(fingerprint);
+    if (languages) {
+      lines.push(`user_pref("intl.accept_languages", "${escapePref(languages)}");`);
+    }
+    if (fingerprint?.webrtcMode === 'disabled') {
+      lines.push('user_pref("media.peerconnection.enabled", false);');
+    }
+    if (fingerprint?.serviceWorkerMode === 'disabled') {
+      lines.push('user_pref("dom.serviceWorkers.enabled", false);');
+    }
+    if (profile.loadImages === false) {
+      lines.push('user_pref("permissions.default.image", 2);');
+    }
+    if (profile.loadVideos === false) {
+      lines.push('user_pref("media.autoplay.default", 5);');
+      lines.push('user_pref("media.block-autoplay-until-in-foreground", true);');
+    }
+
+    return lines;
+  }
+
+  /** Firefox 接受逗号分隔的语言列表，缺失列表时回退到主语言。 */
+  private getLanguageList(fingerprint: FingerprintDraft | undefined): string | undefined {
+    const languages = fingerprint?.languages ?? fingerprint?.language;
+    return languages?.split(',').map((item) => item.trim()).filter(Boolean).join(', ');
   }
 
   /** 使用 --no-remote 和独立 profile 强制启动隔离 Firefox 实例。 */
