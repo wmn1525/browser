@@ -1,5 +1,5 @@
 import { Button, Dropdown, type MenuProps } from 'antd';
-import { Bell, Check, ChevronDown, Download, Mail, RefreshCw, UserCircle } from 'lucide-react';
+import { Check, ChevronDown, Download, Mail, RefreshCw, UserCircle } from 'lucide-react';
 import type { PropsWithChildren } from 'react';
 
 import type { BrowserKernelDownloadProgress, BrowserKernelInfo } from '../../../../shared/types';
@@ -28,7 +28,6 @@ export function Topbar({ downloadingKernelId, kernelProgress, kernels, kernelSta
         <HeaderIcon onClick={() => onAction('消息中心待接入')} title="消息"><Mail className="size-5" /></HeaderIcon>
         <HeaderIcon onClick={onRefresh} title="刷新"><RefreshCw className="size-5" /></HeaderIcon>
         <DownloadMenu downloadingKernelId={downloadingKernelId} kernelProgress={kernelProgress} kernels={kernels} kernelStatus={kernelStatus} onDownloadKernel={onDownloadKernel} />
-        <HeaderIcon onClick={() => onAction('暂无新通知')} title="通知"><Bell className="size-5" /></HeaderIcon>
         <AccountMenu onAction={onAction} onCheckUpdates={onCheckUpdates} />
       </div>
     </header>

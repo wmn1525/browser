@@ -11,6 +11,8 @@
     "dist:win": "npm run build && electron-builder --win --x64",
     "start": "node scripts/run-electron-vite.cjs preview",
     "test:antd-ui": "node scripts/test-antd-ui-replacement.cjs",
+    "test:profile-table-ui": "node scripts/test-profile-table-ui.cjs",
+    "test:topbar-ui": "node scripts/test-topbar-ui.cjs",
     "typecheck": "tsc -p tsconfig.main.json --noEmit && tsc -p tsconfig.renderer.json --noEmit"
   },
   "dependencies": {

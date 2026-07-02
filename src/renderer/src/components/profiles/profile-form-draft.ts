@@ -68,7 +68,7 @@ function numberValue(value: FormDataEntryValue | null): number | undefined {
 
 function groupIdValue(value: FormDataEntryValue | null): string | undefined {
   const normalized = text(value);
-  return normalized === 'ungrouped' ? undefined : normalized;
+  return normalized === 'ungrouped' || normalized === '未分组' ? undefined : normalized;
 }
 
 function lines(value: FormDataEntryValue | null): readonly string[] {

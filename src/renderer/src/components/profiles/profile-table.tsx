@@ -47,14 +47,14 @@ export function ProfileTable({
                 }}
               />
             </Th>
-            <Th>编号</Th>
-            <Th>系统----代理----账号</Th>
             <Th>名称</Th>
+            <Th>系统----代理----账号</Th>
+            <Th>编号</Th>
             <Th>分组名称</Th>
             <Th>最近打开时间</Th>
             <Th>标签</Th>
             <Th>备注</Th>
-            <Th className="border-l">操作</Th>
+            <Th className="sticky right-0 z-20 border-l bg-muted">操作</Th>
           </tr>
         </thead>
         <tbody>
@@ -68,7 +68,7 @@ export function ProfileTable({
                   }}
                 />
               </Td>
-              <Td>{profile.id}</Td>
+              <Td className={profile.name ? '' : 'text-muted-foreground'}>{profile.name || '————'}</Td>
               <Td>
                 <div className="flex items-center gap-2">
                   <Laptop className="size-5 text-blue-500" />
@@ -76,12 +76,12 @@ export function ProfileTable({
                   <IconButton onClick={() => onCommand('account', profile.id)} title="绑定账号"><UserPlus className="size-4" /></IconButton>
                 </div>
               </Td>
-              <Td className={profile.name ? '' : 'text-muted-foreground'}>{profile.name || '————'}</Td>
+              <Td>{profile.id}</Td>
               <Td><Tag color={profile.groupId ? 'blue' : 'default'}>{getGroupLabel(groups, profile.groupId)}</Tag></Td>
               <Td className="text-xs text-muted-foreground">{formatRelativeTime(profile.lastLaunchedAt)}</Td>
               <Td><Tags tags={profile.tags} /></Td>
               <Td className="max-w-48 truncate text-xs text-muted-foreground">{profile.proxyLabel === 'Direct' ? '直连环境' : profile.proxyLabel}</Td>
-              <Td className="border-l">
+              <Td className="sticky right-0 z-10 border-l bg-card shadow-[-8px_0_12px_-12px_rgba(15,23,42,0.55)]">
                 <div className="flex items-center gap-2">
                   <RowActionButton onCommand={onCommand} profile={profile} />
                   <ProfileMoreMenu onCommand={onCommand} profile={profile} />

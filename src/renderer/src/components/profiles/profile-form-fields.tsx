@@ -49,7 +49,7 @@ export function BaseTab({
 
   return (
     <FormCard icon={<Info className="size-5" />} title="基础信息">
-      <Field defaultValue={initialProfile?.name} label="名称" maxLength={15} name="name" placeholder="请输入名称" required />
+      <Field defaultValue={initialProfile?.name} label="名称" maxLength={30} name="name" placeholder="请输入名称" required />
       <SelectRow
         label="分组"
         name="groupId"
@@ -57,8 +57,8 @@ export function BaseTab({
           { label: '未分组', value: 'ungrouped' },
           ...groups.map((group) => ({ label: group.name, value: group.id }))
         ]}
+        defaultValue={initialProfile?.groupId ?? 'ungrouped'}
         required
-        value={initialProfile?.groupId ?? 'ungrouped'}
       />
       <Notice>注意：环境运行后，中途修改内核版本，可能导致缓存兼容性问题。</Notice>
       <OsPicker os={os} setOs={(value) => {

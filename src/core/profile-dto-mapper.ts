@@ -41,7 +41,7 @@ export function normalizeProfileDraft(draft: ProfileDraft): ExtendedProfileConfi
   return {
     id: cleanText(draft.id),
     name: draft.name.trim(),
-    groupId: cleanText(draft.groupId),
+    groupId: normalizeGroupId(draft.groupId),
     browserKernel: cleanText(draft.browserKernel),
     os: cleanText(draft.os),
     osVersion: cleanText(draft.osVersion),
@@ -65,7 +65,7 @@ export function toProfileSummary(profile: StoredProfile, isRunning: boolean): Pr
   return {
     id: profile.id,
     name: profile.name,
-    groupId: profile.groupId,
+    groupId: normalizeGroupId(profile.groupId),
     proxyLabel: getProxyLabel(profile.proxy),
     timezoneLabel: profile.timezone ?? 'System',
     tags: profile.tags ?? [],
@@ -79,7 +79,7 @@ export function toProfileDetail(profile: StoredProfile, isRunning: boolean): Pro
   const extendedProfile: ExtendedStoredProfile = profile;
   return {
     ...toProfileSummary(profile, isRunning),
-    groupId: profile.groupId,
+    groupId: normalizeGroupId(profile.groupId),
     browserKernel: extendedProfile.browserKernel,
     os: extendedProfile.os,
     osVersion: extendedProfile.osVersion,
@@ -148,6 +148,12 @@ function normalizeFingerprint(fingerprint: FingerprintDraft | undefined): Finger
 function cleanText(value: string | undefined): string | undefined {
   const normalized = value?.trim();
   return normalized && normalized.length > 0 ? normalized : undefined;
+}
+
+/** 历史表单曾把“未分组”写成 groupId；读取和保存时统一回到空值语义。 */
+function normalizeGroupId(value: string | undefined): string | undefined {
+  const normalized = cleanText(value);
+  return normalized === '未分组' ? undefined : normalized;
 }
 
 /** 生成简短代理标签，避免 UI 泄露代理密码。 */
