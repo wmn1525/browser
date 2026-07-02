@@ -121,6 +121,7 @@ src/shared/                main、preload 和 renderer 共用 DTO
 - `Build Mac`：手动触发 macOS arm64 打包，打包完成后上传 `release/*` 到 Cloudflare R2，并保存 GitHub artifact。
 - `Publish Packages To R2`：手动触发或推送 `v*` 标签时，同时打 Windows x64 与 macOS arm64 包，并上传 `release/*` 到 Cloudflare R2。
 - 手动触发时可填写 `version`，打包前会写入 `package.json`；推送 `v*` 标签时默认使用标签版本。
+- R2 上传会跳过 `win-unpacked/`，并默认只保留最近 5 个版本文件，旧版本会自动清理。
 
 R2 上传需要在 GitHub 仓库配置以下 Secrets：
 
@@ -130,6 +131,7 @@ R2 上传需要在 GitHub 仓库配置以下 Secrets：
 - `CF_R2_BUCKET`
 
 可选配置仓库 Variable `CF_R2_PREFIX`，默认上传到 `publish/` 前缀。
+可选配置仓库 Variable `R2_KEEP_RELEASES`，默认保留 5 个版本。
 
 ## 开发约定
 
