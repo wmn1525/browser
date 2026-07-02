@@ -1,14 +1,18 @@
 import { Bookmark, RefreshCw, Search, Settings, Trash2, X } from 'lucide-react';
 
+import type { ProfileGroup } from '../../../../shared/types';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
 interface FilterbarProps {
+  readonly activeGroupId: string;
+  readonly groups: readonly ProfileGroup[];
   readonly keyword: string;
   readonly onAction: (action: string) => void;
   readonly onClear: () => void;
   readonly onDeleteSelected: () => void;
+  readonly onGroupChange: (groupId: string) => void;
   readonly onKeywordChange: (value: string) => void;
   readonly onRefresh: () => void;
   readonly onTagKeywordChange: (value: string) => void;
@@ -17,10 +21,13 @@ interface FilterbarProps {
 
 /** Profile 筛选栏，使用 Radix Select 保证下拉交互质量。 */
 export function Filterbar({
+  activeGroupId,
+  groups,
   keyword,
   onAction,
   onClear,
   onDeleteSelected,
+  onGroupChange,
   onKeywordChange,
   onRefresh,
   onTagKeywordChange,
@@ -28,12 +35,21 @@ export function Filterbar({
 }: FilterbarProps): JSX.Element {
   return (
     <section className="flex items-center gap-3 border-b bg-card px-6 py-3">
-      <FilterSelect placeholder="全部分组" values={['全部分组', '未分组']} />
+      <FilterSelect
+        onValueChange={onGroupChange}
+        options={[
+          { label: '全部分组', value: 'all' },
+          { label: '未分组', value: 'ungrouped' },
+          ...groups.map((group) => ({ label: group.name, value: group.id }))
+        ]}
+        placeholder="全部分组"
+        value={activeGroupId}
+      />
       <div className="relative w-64">
         <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
         <Input className="pl-9" onChange={(event) => onKeywordChange(event.target.value)} placeholder="名称 | 备注 | 编号" value={keyword} />
       </div>
-      <FilterSelect placeholder="请选择创建人" values={['全部创建人', 'admin']} />
+      <FilterSelect options={[{ label: '全部创建人', value: 'all' }, { label: 'admin', value: 'admin' }]} placeholder="请选择创建人" value="all" />
       <Input className="w-64" onChange={(event) => onTagKeywordChange(event.target.value)} placeholder="请选择标签 (可多选)" value={tagKeyword} />
       <div className="ml-auto flex gap-2">
         <Button onClick={onRefresh} size="icon" title="刷新" type="button" variant="outline"><RefreshCw className="size-4" /></Button>
@@ -46,15 +62,17 @@ export function Filterbar({
   );
 }
 
-function FilterSelect({ placeholder, values }: {
+function FilterSelect({ onValueChange, options, placeholder, value }: {
+  readonly onValueChange?: (value: string) => void;
+  readonly options: readonly { readonly label: string; readonly value: string }[];
   readonly placeholder: string;
-  readonly values: readonly string[];
+  readonly value: string;
 }): JSX.Element {
   return (
-    <Select defaultValue={values[0]}>
+    <Select onValueChange={onValueChange} value={value}>
       <SelectTrigger className="w-48"><SelectValue placeholder={placeholder} /></SelectTrigger>
       <SelectContent>
-        {values.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}
+        {options.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}
       </SelectContent>
     </Select>
   );

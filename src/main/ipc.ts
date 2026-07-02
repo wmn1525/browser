@@ -4,7 +4,9 @@ import { BrowserEngine } from '../core/browser-engine';
 import type { BrowserKernelDownloadProgress } from '../shared/types';
 import type { ProfileDraft } from '../shared/types';
 import type { ProxyPoolItem } from '../shared/types';
+import type { ProfileGroup } from '../shared/types';
 import type { PublicIpInfo } from '../shared/types';
+import { ProfileGroupStore } from './profile-group-store';
 import { ProxyPoolStore } from './proxy-pool-store';
 
 interface IpWhoIsResponse {
@@ -18,6 +20,7 @@ interface IpWhoIsResponse {
 
 /** Electron 主进程 IPC 入口，负责把管理壳请求转交给核心引擎。 */
 const engine = new BrowserEngine();
+const profileGroupStore = new ProfileGroupStore();
 const proxyPoolStore = new ProxyPoolStore();
 engine.onChanged(() => {
   for (const window of BrowserWindow.getAllWindows()) {
@@ -73,6 +76,12 @@ export function registerBrowserIpc(): void {
       regionLabel: buildRegionLabel(data)
     };
   });
+
+  ipcMain.handle('groups:list', () => profileGroupStore.list());
+
+  ipcMain.handle('groups:save', (_event, groups: readonly ProfileGroup[]) =>
+    profileGroupStore.save(groups)
+  );
 
   ipcMain.handle('proxies:list', () => proxyPoolStore.list());
 

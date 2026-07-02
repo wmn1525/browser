@@ -9,6 +9,7 @@ import type {
   LaunchResult,
   ProfileDetail,
   ProfileDraft,
+  ProfileGroup,
   ProfileSummary,
   ProxyPoolItem,
   PublicIpInfo
@@ -38,6 +39,10 @@ const api: BrowserShellApi = {
     ipcRenderer.invoke('window:toggle-maximize') as Promise<void>,
   closeWindow: () => ipcRenderer.invoke('window:close') as Promise<void>,
   getPublicIp: () => ipcRenderer.invoke('network:get-public-ip') as Promise<PublicIpInfo>,
+  listProfileGroups: () =>
+    ipcRenderer.invoke('groups:list') as Promise<readonly ProfileGroup[]>,
+  saveProfileGroups: (groups: readonly ProfileGroup[]) =>
+    ipcRenderer.invoke('groups:save', groups) as Promise<void>,
   listProxyPool: () =>
     ipcRenderer.invoke('proxies:list') as Promise<readonly ProxyPoolItem[]>,
   saveProxyPool: (items: readonly ProxyPoolItem[]) =>

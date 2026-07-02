@@ -115,8 +115,8 @@ export const featurePages: readonly FeaturePageConfig[] = [
       },
       {
         title: 'CDP / Puppeteer / Playwright',
-        description: 'profile 启动后返回 wsEndpoint，可交给 Puppeteer 或 Playwright 连接。',
-        steps: ['启动 profile', '读取 wsEndpoint', '脚本连接后执行自动化任务'],
+        description: 'Chromium profile 启动后返回 wsEndpoint，可交给 Puppeteer 或 Playwright 连接。',
+        steps: ['启动 Chromium profile', '读取 wsEndpoint', '脚本连接后执行自动化任务'],
         actions: [
           { label: '查看连接信息', message: '请先启动一个 profile，然后在详情中查看 wsEndpoint' },
           { label: '查看文档', message: '参考 Dolphin Anty / GoLogin 自动化文档' }

@@ -7,7 +7,7 @@ export function buildProfileDraft(form: FormData, initialProfile: ProfileDetail 
   return {
     id: initialProfile ? undefined : text(form.get('id')),
     name: text(form.get('name')) ?? '',
-    groupId: text(form.get('groupId')),
+    groupId: groupIdValue(form.get('groupId')),
     browserKernel: text(form.get('browserKernel')),
     os: text(form.get('os')),
     osVersion: text(form.get('osVersion')),
@@ -64,6 +64,11 @@ function text(value: FormDataEntryValue | null): string | undefined {
 function numberValue(value: FormDataEntryValue | null): number | undefined {
   const parsed = Number.parseInt(text(value) ?? '', 10);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
+}
+
+function groupIdValue(value: FormDataEntryValue | null): string | undefined {
+  const normalized = text(value);
+  return normalized === 'ungrouped' ? undefined : normalized;
 }
 
 function lines(value: FormDataEntryValue | null): readonly string[] {

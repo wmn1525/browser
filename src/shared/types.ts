@@ -25,6 +25,12 @@ export interface ProfileDraft {
   readonly tags: readonly string[];
 }
 
+/** 本地 profile 分组，保存到 Electron userData，不参与云同步或团队权限。 */
+export interface ProfileGroup {
+  readonly id: string;
+  readonly name: string;
+}
+
 /** UI 层的代理输入模型，进入核心引擎前会清理空字段。 */
 export interface ProxyDraft {
   readonly type: ProxyType;
@@ -97,6 +103,7 @@ export interface FingerprintDraft {
 export interface ProfileSummary {
   readonly id: string;
   readonly name: string;
+  readonly groupId?: string;
   readonly proxyLabel: string;
   readonly timezoneLabel: string;
   readonly tags: readonly string[];
@@ -126,7 +133,7 @@ export interface ProfileDetail extends ProfileSummary {
 /** 已启动浏览器的连接信息，仅暴露管理壳真正需要的字段。 */
 export interface LaunchResult {
   readonly profileId: string;
-  readonly wsEndpoint: string;
+  readonly wsEndpoint?: string;
 }
 
 /** 当前网络出口 IP 展示模型。 */
@@ -135,10 +142,14 @@ export interface PublicIpInfo {
   readonly regionLabel: string;
 }
 
+/** 浏览器内核所属引擎，启动链路会按引擎类型分流。 */
+export type BrowserKernelEngine = 'chromium' | 'firefox';
+
 /** 管理壳展示和启动时使用的浏览器内核信息。 */
 export interface BrowserKernelInfo {
   readonly id: string;
   readonly label: string;
+  readonly engine: BrowserKernelEngine;
   readonly majorVersion?: number;
   readonly version: string;
   readonly source: 'system' | 'downloaded' | 'remote';
@@ -201,6 +212,8 @@ export interface BrowserShellApi {
   readonly toggleMaximizeWindow: () => Promise<void>;
   readonly closeWindow: () => Promise<void>;
   readonly getPublicIp: () => Promise<PublicIpInfo>;
+  readonly listProfileGroups: () => Promise<readonly ProfileGroup[]>;
+  readonly saveProfileGroups: (groups: readonly ProfileGroup[]) => Promise<void>;
   readonly listProxyPool: () => Promise<readonly ProxyPoolItem[]>;
   readonly saveProxyPool: (items: readonly ProxyPoolItem[]) => Promise<void>;
   readonly listBrowserKernels: () => Promise<readonly BrowserKernelInfo[]>;

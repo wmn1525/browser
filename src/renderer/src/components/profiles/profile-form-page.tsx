@@ -1,7 +1,7 @@
 import type { FormEvent } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 
-import type { BrowserKernelInfo, ProfileDetail, ProfileDraft } from '../../../../shared/types';
+import type { BrowserKernelInfo, ProfileDetail, ProfileDraft, ProfileGroup } from '../../../../shared/types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import {
   AccountTab,
@@ -17,13 +17,14 @@ import { ProxyTab } from './profile-proxy-tab';
 import { getDefaultOsVersion, getDefaultPreset, getOsVersionOptions, getPresetByUserAgent, getPresetsForOs, getRandomPresetForOs } from './user-agent-options';
 
 interface ProfileFormPageProps {
+  readonly groups: readonly ProfileGroup[];
   readonly initialProfile?: ProfileDetail;
   readonly onCancel: () => void;
   readonly onSubmit: (draft: ProfileDraft) => Promise<void>;
 }
 
 /** 主内容区的新建/编辑页，不使用弹窗。 */
-export function ProfileFormPage({ initialProfile, onCancel, onSubmit }: ProfileFormPageProps): JSX.Element {
+export function ProfileFormPage({ groups, initialProfile, onCancel, onSubmit }: ProfileFormPageProps): JSX.Element {
   const [os, setOs] = useState(initialProfile?.os ?? 'Windows');
   const matchedPreset = getPresetByUserAgent(os, initialProfile?.userAgent) ?? getDefaultPreset(os);
   const [uaPresetId, setUaPresetId] = useState(matchedPreset.id);
@@ -113,7 +114,7 @@ export function ProfileFormPage({ initialProfile, onCancel, onSubmit }: ProfileF
 
         <div className="flex min-h-0 flex-1">
           <div className="min-w-0 flex-1 overflow-y-auto bg-background p-6">
-            <TabsContent forceMount value="base"><BaseTab downloadingKernelId={downloadingKernelId} initialProfile={initialProfile} kernel={kernel} kernels={kernels} onDownloadKernel={(id) => void downloadKernel(id)} os={os} osVersion={osVersion} setKernel={setKernel} setOs={selectOs} setOsVersion={setOsVersion} setUserAgent={setUserAgent} setUaPreset={selectUaPreset} uaPresetId={uaPresetId} userAgent={userAgent} /></TabsContent>
+            <TabsContent forceMount value="base"><BaseTab downloadingKernelId={downloadingKernelId} groups={groups} initialProfile={initialProfile} kernel={kernel} kernels={kernels} onDownloadKernel={(id) => void downloadKernel(id)} os={os} osVersion={osVersion} setKernel={setKernel} setOs={selectOs} setOsVersion={setOsVersion} setUserAgent={setUserAgent} setUaPreset={selectUaPreset} uaPresetId={uaPresetId} userAgent={userAgent} /></TabsContent>
             <TabsContent forceMount value="proxy"><ProxyTab initialProfile={initialProfile} /></TabsContent>
             <TabsContent forceMount value="account"><AccountTab initialProfile={initialProfile} /></TabsContent>
             <TabsContent forceMount value="apps"><AppsTab initialProfile={initialProfile} loadImages={loadImages} loadVideos={loadVideos} setLoadImages={setLoadImages} setLoadVideos={setLoadVideos} /></TabsContent>

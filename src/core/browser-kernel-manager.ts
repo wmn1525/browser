@@ -11,6 +11,7 @@ import type {
   BrowserKernelDownloadProgress,
   BrowserKernelInfo
 } from '../shared/types';
+import { FirefoxKernelManager } from './firefox-kernel-manager';
 
 interface ChromeForTestingMilestone {
   readonly milestone: string;
@@ -36,13 +37,22 @@ const kernelMajorVersions = [120, 124, 128, 132, 136, 140, 141, 142, 143, 144, 1
 /** 管理本机 Chrome 与指定版本 Chrome for Testing 内核下载。 */
 export class BrowserKernelManager {
   private readonly root = join(homedir(), '.imrun-browser', 'kernels');
+  private readonly firefox = new FirefoxKernelManager(this.root);
 
   public async list(): Promise<readonly BrowserKernelInfo[]> {
     const remote = await this.fetchRemoteKernels().catch(() => this.fallbackRemoteKernels());
-    return [this.detectSystemChrome(), ...remote.map((kernel) => this.withInstallState(kernel))];
+    return [
+      this.detectSystemChrome(),
+      ...await this.firefox.list(),
+      ...remote.map((kernel) => this.withInstallState(kernel))
+    ];
   }
 
   public async download(kernelId: string, onProgress?: (progress: BrowserKernelDownloadProgress) => void): Promise<BrowserKernelDownloadResult> {
+    if (this.firefox.isFirefoxKernel(kernelId)) {
+      return this.firefox.download(kernelId, onProgress);
+    }
+
     const majorVersion = this.parseKernelId(kernelId);
     const remoteKernel = await this.getRemoteKernel(majorVersion);
     const download = await this.getDownload(majorVersion);
@@ -140,12 +150,33 @@ export class BrowserKernelManager {
     return existsSync(executablePath) ? executablePath : undefined;
   }
 
+  /** 按内核 ID 返回启动所需信息，未知 ID 保持原有本机 Chrome 行为。 */
+  public async resolveKernel(kernelId: string | undefined): Promise<BrowserKernelInfo> {
+    if (!kernelId || kernelId === 'system-chrome') {
+      return this.detectSystemChrome();
+    }
+
+    const firefoxKernel = await this.firefox.resolve(kernelId);
+    if (firefoxKernel) {
+      return firefoxKernel;
+    }
+
+    this.parseKernelId(kernelId);
+    const knownKernel = this.fallbackRemoteKernels().find((kernel) => kernel.id === kernelId);
+    if (!knownKernel) {
+      throw new Error(`不支持的内核版本: ${kernelId}`);
+    }
+
+    return this.withInstallState(knownKernel);
+  }
+
   private detectSystemChrome(): BrowserKernelInfo {
     try {
       const executablePath = getChromePath();
       return {
         id: 'system-chrome',
         label: '本机 Chrome',
+        engine: 'chromium',
         version: '本机已安装',
         source: 'system',
         isInstalled: true,
@@ -155,6 +186,7 @@ export class BrowserKernelManager {
       return {
         id: 'system-chrome',
         label: '本机 Chrome',
+        engine: 'chromium',
         version: '未检测到',
         source: 'system',
         isInstalled: false
@@ -217,6 +249,7 @@ export class BrowserKernelManager {
     return {
       id: `chrome-${majorVersion}`,
       label: `Chrome ${milestone.version}`,
+      engine: 'chromium',
       majorVersion,
       version: milestone.version,
       source: 'remote',
@@ -297,6 +330,7 @@ function fallback(majorVersion: number, version: string): BrowserKernelInfo {
   return {
     id: `chrome-${majorVersion}`,
     label: `Chrome ${version}`,
+    engine: 'chromium',
     majorVersion,
     version,
     source: 'remote',

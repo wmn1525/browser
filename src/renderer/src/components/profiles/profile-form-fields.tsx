@@ -1,8 +1,8 @@
-import { Check, Chrome, Download, Info, Laptop, Monitor, RefreshCw, Search, ShieldCheck, Smartphone, Terminal } from 'lucide-react';
+import { Check, Chrome, Download, Globe, Info, Laptop, Monitor, RefreshCw, Search, ShieldCheck, Smartphone, Terminal } from 'lucide-react';
 import type { InputHTMLAttributes, PropsWithChildren } from 'react';
 import { useState } from 'react';
 
-import type { BrowserKernelInfo, ProfileDetail } from '../../../../shared/types';
+import type { BrowserKernelInfo, ProfileDetail, ProfileGroup } from '../../../../shared/types';
 import { cn } from '../../lib/utils';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
@@ -19,6 +19,7 @@ const searchEngines = ['Google', 'Bing', 'DuckDuckGo'];
 
 interface BaseTabProps {
   readonly downloadingKernelId: string | undefined;
+  readonly groups: readonly ProfileGroup[];
   readonly initialProfile?: ProfileDetail;
   readonly kernel: string;
   readonly kernels: readonly BrowserKernelInfo[];
@@ -36,6 +37,7 @@ interface BaseTabProps {
 
 export function BaseTab({
   downloadingKernelId,
+  groups,
   initialProfile,
   kernel,
   kernels,
@@ -55,7 +57,16 @@ export function BaseTab({
   return (
     <FormCard icon={<Info className="size-5" />} title="基础信息">
       <Field defaultValue={initialProfile?.name} label="名称" maxLength={15} name="name" placeholder="请输入名称" required />
-      <SelectRow label="分组" name="groupId" options={['未分组']} required />
+      <SelectRow
+        label="分组"
+        name="groupId"
+        options={[
+          { label: '未分组', value: 'ungrouped' },
+          ...groups.map((group) => ({ label: group.name, value: group.id }))
+        ]}
+        required
+        value={initialProfile?.groupId ?? 'ungrouped'}
+      />
       <Notice>注意：环境运行后，中途修改内核版本，可能导致缓存兼容性问题。</Notice>
       <OsPicker os={os} setOs={(value) => {
         setOs(value);
@@ -122,6 +133,7 @@ function KernelRow({ downloading, onDownload, onSelect, option, selected, state 
 }): JSX.Element {
   const installed = state?.isInstalled ?? option.id === 'system-chrome';
   const version = state?.version !== '本机已安装' && state?.version ? state.version : option.version;
+  const canDownload = option.id !== 'system-chrome' && option.id !== 'system-firefox';
   if (installed) {
     return (
       <button className="flex w-full items-center justify-between rounded-md px-2 py-2 text-left text-sm hover:bg-muted" onClick={onSelect} type="button">
@@ -134,9 +146,11 @@ function KernelRow({ downloading, onDownload, onSelect, option, selected, state 
   return (
     <div className="flex items-center justify-between gap-3 rounded-md px-2 py-2 text-sm text-muted-foreground opacity-70">
       <KernelMeta option={option} version={version} />
-      <Button disabled={downloading} onClick={onDownload} size="sm" type="button" variant="outline">
-        <Download className="size-3.5" />{downloading ? '下载中' : '下载'}
-      </Button>
+      {canDownload ? (
+        <Button disabled={downloading} onClick={onDownload} size="sm" type="button" variant="outline">
+          <Download className="size-3.5" />{downloading ? '下载中' : '下载'}
+        </Button>
+      ) : <span className="text-[11px] text-muted-foreground">未检测到</span>}
     </div>
   );
 }
@@ -145,9 +159,10 @@ function KernelMeta({ option, version }: {
   readonly option: (typeof browserKernelOptions)[number];
   readonly version: string;
 }): JSX.Element {
+  const Icon = option.engine === 'firefox' ? Globe : Chrome;
   return (
     <span className="grid gap-0.5">
-      <span className="font-medium">{option.label}</span>
+      <span className="flex items-center gap-1.5 font-medium"><Icon className="size-3.5" />{option.label}</span>
       <span className="text-[11px] text-muted-foreground">{option.description} / {version}</span>
     </span>
   );
@@ -273,24 +288,35 @@ function Field({ className, label, ...props }: FieldProps): JSX.Element {
   );
 }
 
+type SelectOption = string | { readonly label: string; readonly value: string };
+
 function SelectRow({ defaultValue, label, name, onValueChange, options, required, value }: {
   readonly defaultValue?: string;
   readonly label: string;
   readonly name: string;
   readonly onValueChange?: (value: string) => void;
-  readonly options: readonly string[];
+  readonly options: readonly SelectOption[];
   readonly required?: boolean;
   readonly value?: string;
 }): JSX.Element {
+  const firstValue = getOptionValue(options[0]);
   return (
     <Label className="grid grid-cols-[128px_1fr] items-center gap-3">
       <span className="text-sm text-secondary">{required ? <span className="mr-1 text-destructive">*</span> : null}{label}</span>
-      <Select defaultValue={value === undefined ? defaultValue ?? options[0] : undefined} name={name} onValueChange={onValueChange} value={value}>
+      <Select defaultValue={value === undefined ? defaultValue ?? firstValue : undefined} name={name} onValueChange={onValueChange} value={value}>
         <SelectTrigger><SelectValue /></SelectTrigger>
-        <SelectContent>{options.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}</SelectContent>
+        <SelectContent>{options.map((option) => <SelectItem key={getOptionValue(option)} value={getOptionValue(option)}>{getOptionLabel(option)}</SelectItem>)}</SelectContent>
       </Select>
     </Label>
   );
+}
+
+function getOptionValue(option: SelectOption): string {
+  return typeof option === 'string' ? option : option.value;
+}
+
+function getOptionLabel(option: SelectOption): string {
+  return typeof option === 'string' ? option : option.label;
 }
 
 function OsPicker({ os, setOs }: { readonly os: string; readonly setOs: (value: string) => void }): JSX.Element {

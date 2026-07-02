@@ -1,52 +1,32 @@
 import { BrowserProfiles } from '@aitofy/browser-profiles';
-
 import type {
   BrowserKernelDownloadResult,
   BrowserKernelDownloadProgress,
   BrowserKernelInfo,
-  FingerprintDraft,
   LaunchResult,
   ProfileDetail,
   ProfileDraft,
-  ProfileSummary,
-  ProxyDraft
+  ProfileSummary
 } from '../shared/types';
-import type { ProfileConfig, ProxyConfig, StoredProfile } from '@aitofy/browser-profiles';
+import type { StoredProfile } from '@aitofy/browser-profiles';
 import type { LaunchResult as BrowserLaunchResult } from '@aitofy/browser-profiles';
 import { BrowserKernelManager } from './browser-kernel-manager';
+import { FirefoxProfileLauncher } from './firefox-profile-launcher';
+import {
+  normalizeProfileDraft,
+  toProfileDetail,
+  toProfileSummary,
+  toProxyDraft,
+  type ExtendedStoredProfile
+} from './profile-dto-mapper';
 
 /** 浏览器引擎层只封装 profile 生命周期，不持有任何 Electron UI 状态。 */
-
-interface ExtendedProfileConfig extends ProfileConfig {
-  readonly browserKernel?: string;
-  readonly os?: string;
-  readonly osVersion?: string;
-  readonly userAgent?: string;
-  readonly cookiesText?: string;
-  readonly searchEngine?: string;
-  readonly accountPlatform?: string;
-  readonly accountName?: string;
-  readonly loadImages?: boolean;
-  readonly loadVideos?: boolean;
-}
-
-interface ExtendedStoredProfile extends StoredProfile {
-  readonly browserKernel?: string;
-  readonly os?: string;
-  readonly osVersion?: string;
-  readonly userAgent?: string;
-  readonly cookiesText?: string;
-  readonly searchEngine?: string;
-  readonly accountPlatform?: string;
-  readonly accountName?: string;
-  readonly loadImages?: boolean;
-  readonly loadVideos?: boolean;
-}
 
 /** 核心浏览器引擎：集中管理 profile 存储、启动和关闭，不依赖 Electron。 */
 export class BrowserEngine {
   private readonly profiles: BrowserProfiles;
   private readonly kernels = new BrowserKernelManager();
+  private readonly firefox = new FirefoxProfileLauncher();
   private readonly runningProfiles = new Set<string>();
   private readonly monitors = new Map<string, ReturnType<typeof setInterval>>();
   private readonly changeListeners = new Set<() => void>();
@@ -63,7 +43,7 @@ export class BrowserEngine {
 
   /** 创建本地 profile，指纹字段通过 CDP 注入链路在启动后生效。 */
   public async createProfile(draft: ProfileDraft): Promise<ProfileSummary> {
-    const profile = await this.profiles.create(this.normalizeDraft(draft));
+    const profile = await this.profiles.create(normalizeProfileDraft(draft));
     this.notifyChanged();
     return this.toSummary(profile);
   }
@@ -81,7 +61,7 @@ export class BrowserEngine {
   /** 更新 profile 配置，运行中的浏览器需要下次启动才完整应用新指纹。 */
   public async updateProfile(profileId: string, draft: ProfileDraft): Promise<ProfileSummary> {
     const profile = await this.profiles.update(profileId, {
-      ...this.normalizeDraft(draft),
+      ...normalizeProfileDraft(draft),
       id: undefined
     });
     if (!profile) {
@@ -117,9 +97,16 @@ export class BrowserEngine {
   public async launchProfile(idOrName: string): Promise<LaunchResult> {
     const profile = await this.profiles.get(idOrName);
     const extendedProfile: ExtendedStoredProfile | undefined = profile ?? undefined;
-    const chromePath = await this.kernels.resolveExecutablePath(extendedProfile?.browserKernel);
+    const kernel = await this.kernels.resolveKernel(extendedProfile?.browserKernel);
+    if (kernel.engine === 'firefox') {
+      if (!extendedProfile) {
+        throw new Error(`Profile not found: ${idOrName}`);
+      }
+      return this.launchFirefoxProfile(extendedProfile, kernel.executablePath);
+    }
+
     const session: BrowserLaunchResult = await this.profiles.launchByIdOrName(idOrName, {
-      chromePath,
+      chromePath: kernel.executablePath,
       headless: false
     });
 
@@ -150,7 +137,11 @@ export class BrowserEngine {
   /** 关闭指定 profile 对应的浏览器实例。 */
   public async closeProfile(profileId: string): Promise<void> {
     this.stopBrowserMonitor(profileId);
-    await this.profiles.close(profileId);
+    if (this.firefox.isRunning(profileId)) {
+      await this.firefox.close(profileId);
+    } else {
+      await this.profiles.close(profileId);
+    }
     this.runningProfiles.delete(profileId);
     this.notifyChanged();
   }
@@ -228,6 +219,26 @@ export class BrowserEngine {
     this.notifyChanged();
   }
 
+  /** 启动真实 Firefox/Gecko 进程，并用子进程生命周期维护运行态。 */
+  private async launchFirefoxProfile(
+    profile: ExtendedStoredProfile,
+    executablePath: string | undefined
+  ): Promise<LaunchResult> {
+    if (!executablePath) {
+      throw new Error('未检测到 Firefox，请先安装 Firefox 后再选择本机 Firefox 内核。');
+    }
+
+    const session = await this.firefox.launch({
+      id: profile.id,
+      proxy: toProxyDraft(profile.proxy),
+      startUrls: profile.startUrls ?? []
+    }, executablePath, (profileId) => this.markBrowserClosed(profileId));
+    this.runningProfiles.add(session.profileId);
+    this.notifyChanged();
+
+    return { profileId: session.profileId };
+  }
+
   /** 广播 profile 或运行态变化。 */
   private notifyChanged(): void {
     for (const listener of this.changeListeners) {
@@ -235,143 +246,13 @@ export class BrowserEngine {
     }
   }
 
-  /** 将管理壳 DTO 转为核心库需要的可持久化配置。 */
-  private normalizeDraft(draft: ProfileDraft): ExtendedProfileConfig {
-    return {
-      id: this.cleanText(draft.id),
-      name: draft.name.trim(),
-      groupId: this.cleanText(draft.groupId),
-      browserKernel: this.cleanText(draft.browserKernel),
-      os: this.cleanText(draft.os),
-      osVersion: this.cleanText(draft.osVersion),
-      userAgent: this.cleanText(draft.userAgent),
-      cookiesText: this.cleanText(draft.cookiesText),
-      searchEngine: this.cleanText(draft.searchEngine),
-      accountPlatform: this.cleanText(draft.accountPlatform),
-      accountName: this.cleanText(draft.accountName),
-      loadImages: draft.loadImages,
-      loadVideos: draft.loadVideos,
-      proxy: this.normalizeProxy(draft.proxy),
-      timezone: this.cleanText(draft.timezone),
-      fingerprint: this.normalizeFingerprint(draft.fingerprint),
-      startUrls: draft.startUrls.map((url) => url.trim()).filter(Boolean),
-      tags: draft.tags.map((tag) => tag.trim()).filter(Boolean)
-    };
-  }
-
-  /** 清理代理字段，缺少 host 或 port 时视为直连。 */
-  private normalizeProxy(proxy: ProxyDraft | undefined): ProxyDraft | undefined {
-    if (!proxy || proxy.host.trim().length === 0 || proxy.port <= 0) {
-      return undefined;
-    }
-
-    return {
-      type: proxy.type,
-      host: proxy.host.trim(),
-      port: proxy.port,
-      username: this.cleanText(proxy.username),
-      password: this.cleanText(proxy.password)
-    };
-  }
-
-  private normalizeFingerprint(
-    fingerprint: FingerprintDraft | undefined
-  ): FingerprintDraft | undefined {
-    if (!fingerprint) {
-      return undefined;
-    }
-
-    return {
-      platform: this.cleanText(fingerprint.platform),
-      language: this.cleanText(fingerprint.language),
-      hardwareConcurrency: fingerprint.hardwareConcurrency,
-      deviceMemory: fingerprint.deviceMemory,
-      screenWidth: fingerprint.screenWidth,
-      screenHeight: fingerprint.screenHeight,
-      webglVendor: this.cleanText(fingerprint.webglVendor),
-      webglRenderer: this.cleanText(fingerprint.webglRenderer),
-      hstsMode: this.cleanText(fingerprint.hstsMode),
-      hstsValue: this.cleanText(fingerprint.hstsValue),
-      webglMode: this.cleanText(fingerprint.webglMode),
-      webglValue: this.cleanText(fingerprint.webglValue),
-      canvasMode: this.cleanText(fingerprint.canvasMode),
-      canvasValue: this.cleanText(fingerprint.canvasValue),
-      pluginsMode: this.cleanText(fingerprint.pluginsMode),
-      pluginsValue: this.cleanText(fingerprint.pluginsValue),
-      rectsMode: this.cleanText(fingerprint.rectsMode),
-      rectsValue: this.cleanText(fingerprint.rectsValue),
-      fontsMode: this.cleanText(fingerprint.fontsMode),
-      fontsValue: this.cleanText(fingerprint.fontsValue),
-      batteryState: this.cleanText(fingerprint.batteryState),
-      bluetoothState: this.cleanText(fingerprint.bluetoothState),
-      networkState: this.cleanText(fingerprint.networkState)
-    };
-  }
-
-  /** 统一把空字符串折叠为 undefined，避免写入无意义字段。 */
-  private cleanText(value: string | undefined): string | undefined {
-    const normalized = value?.trim();
-    return normalized && normalized.length > 0 ? normalized : undefined;
-  }
-
   /** 把核心库 profile 转成管理壳稳定展示模型。 */
   private toSummary(profile: StoredProfile): ProfileSummary {
-    return {
-      id: profile.id,
-      name: profile.name,
-      proxyLabel: this.getProxyLabel(profile.proxy),
-      timezoneLabel: profile.timezone ?? 'System',
-      tags: profile.tags ?? [],
-      isRunning: this.runningProfiles.has(profile.id),
-      lastLaunchedAt: profile.lastLaunchedAt
-    };
+    return toProfileSummary(profile, this.runningProfiles.has(profile.id));
   }
 
   /** 把核心库 profile 转成编辑弹窗可用详情。 */
   private toDetail(profile: StoredProfile): ProfileDetail {
-    const extendedProfile: ExtendedStoredProfile = profile;
-    return {
-      ...this.toSummary(profile),
-      groupId: profile.groupId,
-      browserKernel: extendedProfile.browserKernel,
-      os: extendedProfile.os,
-      osVersion: extendedProfile.osVersion,
-      userAgent: extendedProfile.userAgent,
-      cookiesText: extendedProfile.cookiesText,
-      searchEngine: extendedProfile.searchEngine,
-      accountPlatform: extendedProfile.accountPlatform,
-      accountName: extendedProfile.accountName,
-      loadImages: extendedProfile.loadImages,
-      loadVideos: extendedProfile.loadVideos,
-      proxy: this.toProxyDraft(profile.proxy),
-      timezone: profile.timezone,
-      fingerprint: profile.fingerprint,
-      startUrls: profile.startUrls ?? []
-    };
-  }
-
-  /** 生成简短代理标签，避免 UI 泄露代理密码。 */
-  private getProxyLabel(proxy: ProxyConfig | null | undefined): string {
-    if (!proxy) {
-      return 'Direct';
-    }
-
-    return `${proxy.type}://${proxy.host}:${proxy.port}`;
-  }
-
-  /** 将核心库代理配置转成 UI 编辑模型。 */
-  private toProxyDraft(proxy: ProxyConfig | null | undefined): ProxyDraft | undefined {
-    const port = Number(proxy?.port);
-    if (!proxy || !Number.isFinite(port)) {
-      return undefined;
-    }
-
-    return {
-      type: proxy.type,
-      host: proxy.host,
-      port,
-      username: proxy.username,
-      password: proxy.password
-    };
+    return toProfileDetail(profile, this.runningProfiles.has(profile.id));
   }
 }

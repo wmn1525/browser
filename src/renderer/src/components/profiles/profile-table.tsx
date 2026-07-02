@@ -1,7 +1,7 @@
 import { Copy, Download, Eye, Laptop, MoreVertical, Pencil, Play, Power, Settings, Trash2, UserPlus } from 'lucide-react';
 import type { PropsWithChildren } from 'react';
 
-import type { ProfileSummary } from '../../../../shared/types';
+import type { ProfileGroup, ProfileSummary } from '../../../../shared/types';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { Checkbox } from '../ui/checkbox';
@@ -14,6 +14,7 @@ import {
 } from '../ui/dropdown-menu';
 import { Table, Td, Th } from '../ui/table';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
+import { getGroupLabel } from './profile-groups';
 
 export type ProfileCommand =
   | 'launch'
@@ -27,6 +28,7 @@ export type ProfileCommand =
   | 'account';
 
 interface ProfileTableProps {
+  readonly groups: readonly ProfileGroup[];
   readonly profiles: readonly ProfileSummary[];
   readonly selectedIds: readonly string[];
   readonly onCommand: (command: ProfileCommand, profileId: string) => void;
@@ -35,6 +37,7 @@ interface ProfileTableProps {
 
 /** Profile 表格，保留参考页面列结构并接入完整行操作。 */
 export function ProfileTable({
+  groups,
   onCommand,
   onSelectedIdsChange,
   profiles,
@@ -85,7 +88,7 @@ export function ProfileTable({
                 </div>
               </Td>
               <Td className={profile.name ? '' : 'text-muted-foreground'}>{profile.name || '————'}</Td>
-              <Td><Badge tone="primary">未分组</Badge></Td>
+              <Td><Badge tone={profile.groupId ? 'primary' : 'muted'}>{getGroupLabel(groups, profile.groupId)}</Badge></Td>
               <Td className="text-xs text-muted-foreground">{formatRelativeTime(profile.lastLaunchedAt)}</Td>
               <Td><Tags tags={profile.tags} /></Td>
               <Td className="max-w-48 truncate text-xs text-muted-foreground">{profile.proxyLabel === 'Direct' ? '直连环境' : profile.proxyLabel}</Td>

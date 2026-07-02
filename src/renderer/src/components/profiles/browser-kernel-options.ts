@@ -1,7 +1,10 @@
+import type { BrowserKernelEngine } from '../../../../shared/types';
+
 export interface BrowserKernelOption {
   readonly id: string;
   readonly label: string;
   readonly description: string;
+  readonly engine: BrowserKernelEngine;
   readonly majorVersion?: number;
   readonly version: string;
 }
@@ -11,8 +14,27 @@ export const browserKernelOptions: readonly BrowserKernelOption[] = [
     id: 'system-chrome',
     label: '本机 Chrome',
     description: '使用系统已安装 Chrome，兼容性最好',
+    engine: 'chromium',
     version: 'system'
   },
+  {
+    id: 'system-firefox',
+    label: '本机 Firefox',
+    description: '启动真实 Firefox/Gecko 浏览器进程',
+    engine: 'firefox',
+    version: 'system'
+  },
+  {
+    id: 'firefox-latest',
+    label: 'Firefox 最新稳定版',
+    description: '下载 Mozilla 官方 Windows 64-bit Firefox',
+    engine: 'firefox',
+    version: 'latest'
+  },
+  firefox('firefox-152', 'Firefox 152.0.4', '152.0.4', 'Mozilla 官方稳定版'),
+  firefox('firefox-140-esr', 'Firefox 140.6.0 ESR', '140.6.0esr', 'Mozilla 官方 ESR 稳定版'),
+  firefox('firefox-128-esr', 'Firefox 128.14.0 ESR', '128.14.0esr', 'Mozilla 官方 ESR 稳定版'),
+  firefox('firefox-120', 'Firefox 120.0', '120.0', 'Mozilla 官方历史稳定版'),
   kernel(151, '151.0.7921.0', '最新测试里程碑版本'),
   kernel(150, '150.0.7871.46', '当前较新版本'),
   kernel(149, '149.0.7827.155', '接近当前常用版本'),
@@ -49,7 +71,18 @@ function kernel(majorVersion: number, version: string, description: string): Bro
     id: `chrome-${majorVersion}`,
     label: `Chrome ${version}`,
     description,
+    engine: 'chromium',
     majorVersion,
+    version
+  };
+}
+
+function firefox(id: string, label: string, version: string, description: string): BrowserKernelOption {
+  return {
+    id,
+    label,
+    description,
+    engine: 'firefox',
     version
   };
 }

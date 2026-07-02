@@ -3,6 +3,8 @@ import { ArrowRight, CheckCircle2, ExternalLink } from 'lucide-react';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { Separator } from '../ui/separator';
+import type { ProfileGroup, ProfileSummary } from '../../../../shared/types';
+import { LocalGroupsPage } from './local-groups-page';
 import { ProxyPoolPage } from './proxy-pool-page';
 
 export type ModuleKey = 'profiles' | 'groups' | 'proxies' | 'apps' | 'automation' | 'team';
@@ -29,11 +31,39 @@ export interface FeaturePageConfig {
 
 interface FeaturePageProps {
   readonly config: FeaturePageConfig;
+  readonly groups?: readonly ProfileGroup[];
   readonly onAction: (message: string) => void;
+  readonly onCreateGroup?: (name: string) => void;
+  readonly onDeleteGroup?: (groupId: string) => void;
+  readonly onOpenGroup?: (groupId: string) => void;
+  readonly onRenameGroup?: (groupId: string, name: string) => void;
+  readonly profiles?: readonly ProfileSummary[];
 }
 
 /** 参考主流指纹浏览器操作文档整理出的模块详情页。 */
-export function FeaturePage({ config, onAction }: FeaturePageProps): JSX.Element {
+export function FeaturePage({
+  config,
+  groups = [],
+  onAction,
+  onCreateGroup,
+  onDeleteGroup,
+  onOpenGroup,
+  onRenameGroup,
+  profiles = []
+}: FeaturePageProps): JSX.Element {
+  if (config.key === 'groups') {
+    return (
+      <LocalGroupsPage
+        groups={groups}
+        onCreateGroup={(name) => onCreateGroup?.(name)}
+        onDeleteGroup={(groupId) => onDeleteGroup?.(groupId)}
+        onOpenGroup={(groupId) => onOpenGroup?.(groupId)}
+        onRenameGroup={(groupId, name) => onRenameGroup?.(groupId, name)}
+        profiles={profiles}
+      />
+    );
+  }
+
   if (config.key === 'proxies') {
     return <ProxyPoolPage />;
   }

@@ -1,7 +1,19 @@
 import { MapPin } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
-import type { ProfileDetail, ProfileDraft, ProfileSummary } from '../../shared/types';
+import type { ProfileDetail, ProfileDraft, ProfileGroup, ProfileSummary } from '../../shared/types';
+import { FeatureDialog, type FeaturePanel, PreviewDialog } from './app-dialogs';
+import {
+  getBatchGroupPrompt,
+  getErrorMessage,
+  getFilterItems,
+  getTopbarDescription,
+  getTopbarItems,
+  getVisibleProfiles,
+  normalizeGroupName,
+  resolvePromptGroupId,
+  toProfileDraft
+} from './app-helpers';
 import { AppUpdateDialog } from './components/layout/app-update-dialog';
 import { Pagination } from './components/layout/pagination';
 import { Sidebar } from './components/layout/sidebar';
@@ -14,23 +26,16 @@ import { BatchToolbar } from './components/profiles/batch-toolbar';
 import { Filterbar } from './components/profiles/filterbar';
 import { ProfileFormPage } from './components/profiles/profile-form-page';
 import { ProfileTable, type ProfileCommand } from './components/profiles/profile-table';
-import { Button } from './components/ui/button';
-import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from './components/ui/dialog';
-import { Textarea } from './components/ui/textarea';
+import { canDeleteGroup, createLocalGroup, getGroupLabel } from './components/profiles/profile-groups';
 import { ToastProvider } from './components/ui/toast';
 import { TooltipProvider } from './components/ui/tooltip';
 import { useAppUpdates } from './hooks/use-app-updates';
 import { useBrowserKernels } from './hooks/use-browser-kernels';
 
-interface FeaturePanel {
-  readonly title: string;
-  readonly description: string;
-  readonly items: readonly string[];
-}
-
 /** React renderer 根组件，管理 Electron preload 暴露的数据流。 */
 export function App(): JSX.Element {
   const [profiles, setProfiles] = useState<readonly ProfileSummary[]>([]);
+  const [groups, setGroups] = useState<readonly ProfileGroup[]>([]);
   const [selectedIds, setSelectedIds] = useState<readonly string[]>([]);
   const [formMode, setFormMode] = useState<'create' | 'edit' | undefined>();
   const [editingProfile, setEditingProfile] = useState<ProfileDetail>();
@@ -39,6 +44,7 @@ export function App(): JSX.Element {
   const [featurePanel, setFeaturePanel] = useState<FeaturePanel>();
   const [keyword, setKeyword] = useState('');
   const [tagKeyword, setTagKeyword] = useState('');
+  const [activeGroupId, setActiveGroupId] = useState('all');
   const [status, setStatus] = useState('准备就绪');
   const [publicIp, setPublicIp] = useState('当前 IP: 获取中...');
   const [, setTimeTick] = useState(0);
@@ -64,8 +70,13 @@ export function App(): JSX.Element {
     }
   }
 
+  async function refreshGroups(): Promise<void> {
+    setGroups(await window.browserShell.listProfileGroups());
+  }
+
   useEffect(() => {
     void refreshProfiles();
+    void refreshGroups();
     void refreshPublicIp();
     const timer = window.setInterval(() => setTimeTick((tick) => tick + 1), 60_000);
     const unsubscribe = window.browserShell.onProfilesChanged(() => {
@@ -150,6 +161,73 @@ export function App(): JSX.Element {
     setStatus(`已删除 ${profileIds.length} 个环境`);
   }
 
+  async function saveGroups(nextGroups: readonly ProfileGroup[], done: string): Promise<void> {
+    await window.browserShell.saveProfileGroups(nextGroups);
+    setGroups(nextGroups);
+    setStatus(done);
+  }
+
+  async function createGroup(groupName: string): Promise<void> {
+    const name = normalizeGroupName(groupName);
+    if (!name) {
+      setStatus('已取消新建分组');
+      return;
+    }
+    if (groups.some((group) => group.name === name)) {
+      setStatus(`分组已存在: ${name}`);
+      return;
+    }
+
+    await saveGroups([...groups, createLocalGroup(name)], `已新建分组: ${name}`);
+  }
+
+  async function renameGroup(groupId: string, groupName: string): Promise<void> {
+    const current = groups.find((group) => group.id === groupId);
+    if (!current) {
+      setStatus(`分组不存在: ${groupId}`);
+      return;
+    }
+
+    const name = normalizeGroupName(groupName);
+    if (!name || name === current.name) {
+      setStatus('已取消重命名分组');
+      return;
+    }
+    if (groups.some((group) => group.id !== groupId && group.name === name)) {
+      setStatus(`分组已存在: ${name}`);
+      return;
+    }
+
+    await saveGroups(groups.map((group) => group.id === groupId ? { ...group, name } : group), `已重命名分组: ${name}`);
+  }
+
+  async function deleteGroup(groupId: string): Promise<void> {
+    const current = groups.find((group) => group.id === groupId);
+    if (!current) {
+      setStatus(`分组不存在: ${groupId}`);
+      return;
+    }
+    if (!canDeleteGroup(groupId, profiles)) {
+      setStatus(`分组 ${current.name} 下仍有环境，不能删除`);
+      return;
+    }
+    if (!window.confirm(`确认删除空分组「${current.name}」？`)) {
+      return;
+    }
+
+    const nextGroups = groups.filter((group) => group.id !== groupId);
+    if (activeGroupId === groupId) {
+      setActiveGroupId('all');
+    }
+    await saveGroups(nextGroups, `已删除分组: ${current.name}`);
+  }
+
+  function openGroupProfiles(groupId: string): void {
+    setActiveGroupId(groupId);
+    setActiveModule('profiles');
+    setStatus(`已筛选分组: ${groupId === 'ungrouped' ? '未分组' : getGroupLabel(groups, groupId)}`);
+  }
+
   async function handleBatchAction(action: 'launch' | 'close' | 'delete' | 'tag' | 'group' | 'duplicate'): Promise<void> {
     if (selectedIds.length === 0) {
       setStatus('请先勾选环境');
@@ -161,11 +239,7 @@ export function App(): JSX.Element {
     if (action === 'close') await runBatch((id) => window.browserShell.closeProfile(id), '批量关闭完成');
     if (action === 'duplicate') await runBatch((id) => window.browserShell.duplicateProfile(id), '批量复制完成');
     if (action === 'tag') await applyBatchTags();
-    if (action === 'group') openFeaturePanel('批量分组', '分组管理闭环入口。', [
-      `当前已选择 ${selectedIds.length} 个环境`,
-      '可在下一步接入 createGroup / moveToGroup 做真实分组',
-      '当前 profile 数据仍保持未分组，不做隐式迁移'
-    ]);
+    if (action === 'group') await applyBatchGroup();
     await refreshProfiles();
   }
 
@@ -186,28 +260,25 @@ export function App(): JSX.Element {
 
     for (const profileId of selectedIds) {
       const detail = await window.browserShell.getProfile(profileId);
-      await window.browserShell.updateProfile(profileId, {
-        id: undefined,
-        name: detail.name,
-        accountName: detail.accountName,
-        accountPlatform: detail.accountPlatform,
-        browserKernel: detail.browserKernel,
-        cookiesText: detail.cookiesText,
-        groupId: detail.groupId,
-        loadImages: detail.loadImages,
-        loadVideos: detail.loadVideos,
-        os: detail.os,
-        osVersion: detail.osVersion,
-        proxy: detail.proxy,
-        searchEngine: detail.searchEngine,
-        timezone: detail.timezone,
-        userAgent: detail.userAgent,
-        fingerprint: detail.fingerprint,
-        startUrls: detail.startUrls,
+      await window.browserShell.updateProfile(profileId, toProfileDraft(detail, {
         tags: Array.from(new Set([...detail.tags, ...tags]))
-      });
+      }));
     }
     setStatus(`已为 ${selectedIds.length} 个环境添加标签`);
+  }
+
+  async function applyBatchGroup(): Promise<void> {
+    const target = resolvePromptGroupId(window.prompt(getBatchGroupPrompt(groups)), groups);
+    if (target.cancelled) {
+      setStatus('已取消批量分组');
+      return;
+    }
+
+    for (const profileId of selectedIds) {
+      const detail = await window.browserShell.getProfile(profileId);
+      await window.browserShell.updateProfile(profileId, toProfileDraft(detail, { groupId: target.groupId }));
+    }
+    setStatus(`已移动 ${selectedIds.length} 个环境到 ${getGroupLabel(groups, target.groupId)}`);
   }
 
   function openFeaturePanel(title: string, description: string, items: readonly string[]): void {
@@ -215,7 +286,7 @@ export function App(): JSX.Element {
     setStatus(title);
   }
 
-  const filteredProfiles = filterProfiles(profiles, keyword, tagKeyword);
+  const filteredProfiles = getVisibleProfiles(profiles, activeGroupId, keyword, tagKeyword);
   const activeFeaturePage = activeModule === 'profiles' ? undefined : getFeaturePage(activeModule);
   const pageTitle = formMode ? (formMode === 'edit' ? '编辑浏览器' : '新建浏览器') : (activeFeaturePage?.title ?? '环境管理');
 
@@ -242,6 +313,7 @@ export function App(): JSX.Element {
             }} title={pageTitle} />
             {formMode ? (
               <ProfileFormPage
+                groups={groups}
                 initialProfile={editingProfile}
                 onCancel={() => {
                   setFormMode(undefined);
@@ -253,14 +325,18 @@ export function App(): JSX.Element {
             ) : activeModule === 'profiles' ? (
               <>
                 <Filterbar
+                  activeGroupId={activeGroupId}
+                  groups={groups}
                   keyword={keyword}
                   onAction={(message) => openFeaturePanel(message, '筛选与表格工具入口。', getFilterItems(message))}
                   onClear={() => {
+                    setActiveGroupId('all');
                     setKeyword('');
                     setTagKeyword('');
                     setStatus('已清空筛选');
                   }}
                   onDeleteSelected={() => void deleteProfiles(selectedIds)}
+                  onGroupChange={setActiveGroupId}
                   onKeywordChange={setKeyword}
                   onRefresh={() => void refreshProfiles()}
                   onTagKeywordChange={setTagKeyword}
@@ -269,6 +345,7 @@ export function App(): JSX.Element {
                 <section className="flex-1 overflow-auto p-6">
                   <BatchToolbar onAction={(action) => void handleBatchAction(action)} selectedCount={selectedIds.length} />
                   <ProfileTable
+                    groups={groups}
                     onCommand={(command, profileId) => void handleProfileCommand(command, profileId)}
                     onSelectedIdsChange={setSelectedIds}
                     profiles={filteredProfiles}
@@ -281,11 +358,17 @@ export function App(): JSX.Element {
               <>
                 <FeaturePage
                   config={activeFeaturePage ?? getFeaturePage('groups')!}
+                  groups={groups}
                   onAction={(message) => openFeaturePanel(message, '该入口已按指纹浏览器操作文档做页面闭环。', [
                     '当前为本地管理壳原型，不会执行云端或团队破坏性操作',
                     '下一步可接入真实数据模型与核心引擎 API',
                     '所有按钮都会给出明确反馈'
                   ])}
+                  onCreateGroup={(name) => void createGroup(name)}
+                  onDeleteGroup={(groupId) => void deleteGroup(groupId)}
+                  onOpenGroup={openGroupProfiles}
+                  onRenameGroup={(groupId, name) => void renameGroup(groupId, name)}
+                  profiles={profiles}
                 />
                 <Pagination count={0} status={status} />
               </>
@@ -303,84 +386,4 @@ export function App(): JSX.Element {
       </ToastProvider>
     </TooltipProvider>
   );
-}
-
-function FeatureDialog({ onClose, panel }: {
-  readonly onClose: () => void;
-  readonly panel: FeaturePanel | undefined;
-}): JSX.Element {
-  return (
-    <Dialog onOpenChange={(open) => { if (!open) onClose(); }} open={Boolean(panel)}>
-      <DialogContent>
-        <DialogTitle>{panel?.title}</DialogTitle>
-        <DialogDescription>{panel?.description}</DialogDescription>
-        <div className="mt-4 rounded-lg border bg-muted/40 p-4">
-          <ul className="grid gap-2 text-sm">
-            {(panel?.items ?? []).map((item) => <li className="rounded-md bg-card px-3 py-2" key={item}>{item}</li>)}
-          </ul>
-        </div>
-        <div className="mt-4 flex justify-end"><DialogClose asChild><Button type="button">完成</Button></DialogClose></div>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function PreviewDialog({ onOpenChange, text, title }: {
-  readonly onOpenChange: () => void;
-  readonly text: string;
-  readonly title: string;
-}): JSX.Element {
-  return (
-    <Dialog onOpenChange={(open) => { if (!open) onOpenChange(); }} open={text.length > 0}>
-      <DialogContent className="w-[min(760px,calc(100vw-48px))]">
-        <DialogTitle>{title}</DialogTitle>
-        <DialogDescription>内容已生成，可检查后复制或保存。</DialogDescription>
-        <Textarea className="mt-4 min-h-80 font-mono text-xs" readOnly value={text} />
-        <div className="mt-4 flex justify-end"><DialogClose asChild><Button type="button">关闭</Button></DialogClose></div>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function filterProfiles(
-  profiles: readonly ProfileSummary[],
-  keyword: string,
-  tagKeyword: string
-): readonly ProfileSummary[] {
-  const normalizedKeyword = keyword.trim().toLowerCase();
-  const normalizedTag = tagKeyword.trim().toLowerCase();
-  return profiles.filter((profile) => {
-    const textMatch =
-      normalizedKeyword.length === 0 ||
-      profile.id.toLowerCase().includes(normalizedKeyword) ||
-      profile.name.toLowerCase().includes(normalizedKeyword) ||
-      profile.proxyLabel.toLowerCase().includes(normalizedKeyword);
-    const tagMatch =
-      normalizedTag.length === 0 ||
-      profile.tags.some((tag) => tag.toLowerCase().includes(normalizedTag));
-    return textMatch && tagMatch;
-  });
-}
-
-function getErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
-
-function getTopbarDescription(message: string): string {
-  if (message.includes('同步')) return '同步入口已闭环为本地任务确认，后续可接入云同步。';
-  return '顶部工具入口已闭环到可确认的操作面板。';
-}
-
-function getTopbarItems(message: string): readonly string[] {
-  if (message.includes('消息')) return ['系统消息', '任务失败提醒', '版本更新通知'];
-  if (message.includes('同步')) return ['刷新本地 profile', '检查运行状态', '同步公网 IP 信息'];
-  if (message.includes('通知')) return ['浏览器关闭提醒', '代理检测结果', '批量任务结果'];
-  if (message.includes('账号')) return ['修改昵称', '团队权限', '操作日志'];
-  return ['入口已响应', '当前不执行破坏性操作', '可继续接入后端能力'];
-}
-
-function getFilterItems(message: string): readonly string[] {
-  if (message.includes('列设置')) return ['编号列', '代理列', '标签列', '备注列', '操作列'];
-  if (message.includes('收藏')) return ['收藏视图已响应', '后续可持久化收藏筛选', '不会修改 profile 数据'];
-  return ['请先勾选环境', '可使用批量工具条执行删除', '删除会弹出确认框'];
 }

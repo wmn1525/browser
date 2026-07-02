@@ -53,7 +53,9 @@ function DownloadMenu({ downloadingKernelId, kernelProgress, kernels, kernelStat
   readonly kernelStatus: string;
   readonly onDownloadKernel: (kernelId: string) => void;
 }): JSX.Element {
-  const kernelOptions = browserKernelOptions.filter((kernel) => kernel.id !== 'system-chrome');
+  const kernelOptions = browserKernelOptions.filter((kernel) => kernel.id !== 'system-chrome' && kernel.id !== 'system-firefox');
+  const firefoxOptions = kernelOptions.filter((kernel) => kernel.engine === 'firefox');
+  const chromeOptions = kernelOptions.filter((kernel) => kernel.engine === 'chromium');
   const progressPercent = kernelProgress?.percent ?? 0;
   return (
     <DropdownMenu>
@@ -74,10 +76,33 @@ function DownloadMenu({ downloadingKernelId, kernelProgress, kernels, kernelStat
           ) : null}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="max-h-96 w-[460px] overflow-y-auto">
-        <div className="px-2 py-1.5 text-xs text-muted-foreground">{kernelStatus}</div>
+      <DropdownMenuContent align="end" className="max-h-[560px] w-[520px] overflow-y-auto p-2">
+        <div className="mb-2 rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground">{kernelStatus}</div>
         <DropdownMenuSeparator />
-        {kernelOptions.map((kernel) => (
+        <KernelDownloadGroup downloadingKernelId={downloadingKernelId} kernelProgress={kernelProgress} kernels={kernels} onDownloadKernel={onDownloadKernel} options={firefoxOptions} title="Firefox / Gecko" />
+        <DropdownMenuSeparator className="my-2" />
+        <KernelDownloadGroup downloadingKernelId={downloadingKernelId} kernelProgress={kernelProgress} kernels={kernels} onDownloadKernel={onDownloadKernel} options={chromeOptions} title="Chrome / Chromium" />
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+function KernelDownloadGroup({ downloadingKernelId, kernelProgress, kernels, onDownloadKernel, options, title }: {
+  readonly downloadingKernelId: string | undefined;
+  readonly kernelProgress: BrowserKernelDownloadProgress | undefined;
+  readonly kernels: readonly BrowserKernelInfo[];
+  readonly onDownloadKernel: (kernelId: string) => void;
+  readonly options: readonly (typeof browserKernelOptions)[number][];
+  readonly title: string;
+}): JSX.Element {
+  return (
+    <section className="py-1">
+      <div className="mb-1 flex items-center justify-between px-2 text-[11px] font-semibold uppercase text-muted-foreground">
+        <span>{title}</span>
+        <span>{options.length} 个版本</span>
+      </div>
+      <div className="grid gap-1">
+        {options.map((kernel) => (
           <KernelDownloadRow
             downloading={downloadingKernelId === kernel.id}
             key={kernel.id}
@@ -87,8 +112,8 @@ function DownloadMenu({ downloadingKernelId, kernelProgress, kernels, kernelStat
             state={kernels.find((item) => item.id === kernel.id)}
           />
         ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
+      </div>
+    </section>
   );
 }
 
@@ -102,15 +127,15 @@ function KernelDownloadRow({ downloading, onDownload, option, progress, state }:
   const installed = state?.isInstalled ?? false;
   const version = state?.version ?? option.version;
   return (
-    <div className="flex items-center justify-between gap-3 rounded-md px-2 py-2 text-sm hover:bg-muted">
-      <span className={installed ? 'grid gap-0.5' : 'grid gap-0.5 text-muted-foreground opacity-70'}>
-        <span className="font-medium">{option.label}</span>
-        <span className="text-[11px] text-muted-foreground">{option.description} / {version}</span>
+    <div className="grid grid-cols-[1fr_104px] items-center gap-3 rounded-md px-2 py-2 text-sm hover:bg-muted">
+      <span className={installed ? 'min-w-0' : 'min-w-0 text-muted-foreground'}>
+        <span className="block truncate font-medium">{option.label}</span>
+        <span className="block truncate text-[11px] text-muted-foreground">{version} · {option.description}</span>
       </span>
       {installed ? (
-        <span className="flex items-center gap-1 text-[11px] text-primary"><Check className="size-3.5" />已下载</span>
+        <span className="flex justify-end gap-1 text-[11px] text-primary"><Check className="size-3.5" />已下载</span>
       ) : downloading ? (
-        <span className="w-24">
+        <span className="w-full">
           <span className="mb-1 flex justify-between text-[10px] text-muted-foreground">
             <span>{getProgressLabel(progress?.phase)}</span>
             <span>{progress?.percent ?? 0}%</span>
@@ -120,7 +145,7 @@ function KernelDownloadRow({ downloading, onDownload, option, progress, state }:
           </span>
         </span>
       ) : (
-        <Button disabled={downloading} onClick={onDownload} size="sm" type="button" variant="outline">
+        <Button className="justify-self-end" disabled={downloading} onClick={onDownload} size="sm" type="button" variant="outline">
           <Download className="size-3.5" />{downloading ? '下载中' : '下载'}
         </Button>
       )}
