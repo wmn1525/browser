@@ -342,23 +342,20 @@ export function App(): JSX.Element {
                 <Pagination count={filteredProfiles.length} status={status} />
               </>
             ) : (
-              <>
-                <FeaturePage
-                  config={activeFeaturePage ?? getFeaturePage('groups')!}
-                  groups={groups}
-                  onAction={(message) => openFeaturePanel(message, '该入口已按指纹浏览器操作文档做页面闭环。', [
-                    '当前为本地管理壳原型，不会执行云端或团队破坏性操作',
-                    '下一步可接入真实数据模型与核心引擎 API',
-                    '所有按钮都会给出明确反馈'
-                  ])}
-                  onCreateGroup={(name) => void createGroup(name)}
-                  onDeleteGroup={(groupId) => void deleteGroup(groupId)}
-                  onOpenGroup={openGroupProfiles}
-                  onRenameGroup={(groupId, name) => void renameGroup(groupId, name)}
-                  profiles={profiles}
-                />
-                <Pagination count={0} status={status} />
-              </>
+              <FeaturePage
+                config={activeFeaturePage ?? getFeaturePage('groups')!}
+                groups={groups}
+                onAction={(message) => openFeaturePanel(message, '该入口已按指纹浏览器操作文档做页面闭环。', [
+                  '当前为本地管理壳原型，不会执行云端或团队破坏性操作',
+                  '下一步可接入真实数据模型与核心引擎 API',
+                  '所有按钮都会给出明确反馈'
+                ])}
+                onCreateGroup={(name) => void createGroup(name)}
+                onDeleteGroup={(groupId) => void deleteGroup(groupId)}
+                onOpenGroup={openGroupProfiles}
+                onRenameGroup={(groupId, name) => void renameGroup(groupId, name)}
+                profiles={profiles}
+              />
             )}
             <footer className="flex items-center justify-between border-t bg-card px-6 py-3 text-xs text-secondary">
               <div className="flex items-center gap-2"><MapPin className="size-4" /><span>{publicIp}</span></div>

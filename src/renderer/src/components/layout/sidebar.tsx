@@ -1,7 +1,7 @@
 import { Button } from 'antd';
-import { AppWindow, Bolt, CloudCog, Folder, Globe2, Grid2X2, Plus, Users } from 'lucide-react';
+import { AppWindow, Bolt, CloudCog, Folder, Globe2, Grid2X2, Plus, Settings, Users, type LucideIcon } from 'lucide-react';
 
-import type { ModuleKey } from '../feature/feature-page';
+import { isAutomationModule, type ModuleKey } from '../feature/feature-page';
 
 interface SidebarProps {
   readonly activeModule: ModuleKey;
@@ -9,12 +9,30 @@ interface SidebarProps {
   readonly onCreateProfile: () => void;
 }
 
-const navItems = [
+interface NavItem {
+  readonly key: ModuleKey;
+  readonly label: string;
+  readonly icon: LucideIcon;
+  readonly children?: readonly NavChild[];
+}
+
+interface NavChild {
+  readonly key: ModuleKey;
+  readonly label: string;
+}
+
+const automationChildren: readonly NavChild[] = [
+  { key: 'automation-api-mcp', label: 'API&MCP' },
+  { key: 'automation-window-sync', label: '窗口同步' }
+];
+
+const navItems: readonly NavItem[] = [
   { key: 'profiles', label: '环境管理', icon: Grid2X2 },
   { key: 'groups', label: '分组管理', icon: Folder },
   { key: 'proxies', label: '代理管理', icon: Globe2 },
   { key: 'apps', label: '应用中心', icon: AppWindow },
-  { key: 'automation', label: '自动化', icon: Bolt },
+  { key: 'automation-api-mcp', label: '自动化', icon: Bolt, children: automationChildren },
+  { key: 'settings', label: '设置中心', icon: Settings },
   { key: 'team', label: '团队', icon: Users }
 ] as const;
 
@@ -36,10 +54,12 @@ export function Sidebar({ activeModule, onCreateProfile, onNavigate }: SidebarPr
       </Button>
 
       <nav className="grid gap-1">
-        {navItems.map((item, index) => {
+        {navItems.map((item) => {
           const Icon = item.icon;
-          const isTeamBlock = index === 4;
-          const isActive = item.key === activeModule;
+          const isTeamBlock = item.key === 'team';
+          const isActive = item.children
+            ? item.children.some((child) => child.key === activeModule)
+            : item.key === activeModule;
           return (
             <div key={item.label}>
               {isTeamBlock ? (
@@ -57,6 +77,27 @@ export function Sidebar({ activeModule, onCreateProfile, onNavigate }: SidebarPr
                 <Icon className="size-5" />
                 {item.label}
               </button>
+              {item.children ? (
+                <div className="ml-8 mt-1 grid gap-1 border-l pl-2">
+                  {item.children.map((child) => {
+                    const isChildActive = child.key === activeModule;
+                    return (
+                      <button
+                        className={
+                          isChildActive
+                            ? 'rounded-md bg-primary/5 px-3 py-2 text-left text-sm font-medium text-primary'
+                            : 'rounded-md px-3 py-2 text-left text-sm text-secondary hover:bg-muted'
+                        }
+                        key={child.key}
+                        onClick={() => onNavigate(child.key)}
+                        type="button"
+                      >
+                        {child.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : null}
             </div>
           );
         })}

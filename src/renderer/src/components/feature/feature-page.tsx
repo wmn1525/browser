@@ -2,12 +2,14 @@ import { Button, Divider, Tag } from 'antd';
 import { ArrowRight, CheckCircle2, ExternalLink } from 'lucide-react';
 
 import type { ProfileGroup, ProfileSummary } from '../../../../shared/types';
+import { AutomationPage, type AutomationTab } from './automation-page';
 import { LocalGroupsPage } from './local-groups-page';
 import { ManagedExtensionsPage } from './managed-extensions-page';
-import { OpenApiPage } from './open-api-page';
 import { ProxyPoolPage } from './proxy-pool-page';
+import { SettingsCenterPage } from './settings-center-page';
 
-export type ModuleKey = 'profiles' | 'groups' | 'proxies' | 'apps' | 'automation' | 'team';
+export type AutomationModuleKey = 'automation-api-mcp' | 'automation-window-sync';
+export type ModuleKey = 'profiles' | 'groups' | 'proxies' | 'apps' | AutomationModuleKey | 'settings' | 'team';
 
 export interface FeatureAction {
   readonly label: string;
@@ -72,8 +74,12 @@ export function FeaturePage({
     return <ManagedExtensionsPage />;
   }
 
-  if (config.key === 'automation') {
-    return <OpenApiPage />;
+  if (isAutomationModule(config.key)) {
+    return <AutomationPage activeTab={toAutomationTab(config.key)} />;
+  }
+
+  if (config.key === 'settings') {
+    return <SettingsCenterPage />;
   }
 
   return (
@@ -120,4 +126,13 @@ export function FeaturePage({
       </div>
     </section>
   );
+}
+
+/** 自动化子路由统一走自动化页面容器。 */
+export function isAutomationModule(key: ModuleKey): key is AutomationModuleKey {
+  return key === 'automation-api-mcp' || key === 'automation-window-sync';
+}
+
+function toAutomationTab(key: AutomationModuleKey): AutomationTab {
+  return key === 'automation-window-sync' ? 'window-sync' : 'api-mcp';
 }

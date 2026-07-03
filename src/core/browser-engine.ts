@@ -10,6 +10,7 @@ import type {
   ProfileDraft,
   ProfileSummary
 } from '../shared/types';
+import type { WindowSyncProfile } from '../shared/window-sync-types';
 import type { StoredProfile } from '@aitofy/browser-profiles';
 import type { LaunchResult as BrowserLaunchResult } from '@aitofy/browser-profiles';
 import { BrowserKernelManager } from './browser-kernel-manager';
@@ -54,6 +55,7 @@ export class BrowserEngine {
   private readonly kernels = new BrowserKernelManager();
   private readonly firefox = new FirefoxProfileLauncher();
   private readonly runningProfiles = new Set<string>();
+  private readonly runningLaunches = new Map<string, LaunchResult>();
   private readonly monitors = new Map<string, ReturnType<typeof setInterval>>();
   private readonly changeListeners = new Set<() => void>();
 
@@ -141,17 +143,38 @@ export class BrowserEngine {
 
     const profileId = session.profileId;
     await injectChromiumFingerprintPatch(session.port, extendedProfile);
-    this.runningProfiles.add(profileId);
-    this.startBrowserMonitor(profileId, session.port);
-    this.notifyChanged();
-
-    return {
+    const result: LaunchResult = {
       profileId,
       port: session.port,
       debugPort: session.port,
       debugUrl: `http://127.0.0.1:${session.port}`,
       wsEndpoint: session.wsEndpoint
     };
+    this.runningProfiles.add(profileId);
+    this.runningLaunches.set(profileId, result);
+    this.startBrowserMonitor(profileId, session.port);
+    this.notifyChanged();
+    return result;
+  }
+
+  /** 返回窗口同步页需要的运行窗口和 CDP 调试信息。 */
+  public async listWindowSyncProfiles(): Promise<readonly WindowSyncProfile[]> {
+    const profiles = await this.profiles.list();
+    return profiles.map((profile) => {
+      const summary = this.toSummary(profile);
+      const launch = this.runningLaunches.get(profile.id);
+      const debugPort = launch?.debugPort ?? launch?.port;
+      return {
+        id: summary.id,
+        name: summary.name,
+        groupId: summary.groupId,
+        isRunning: summary.isRunning,
+        syncSupported: summary.isRunning && Boolean(debugPort),
+        debugPort,
+        debugUrl: launch?.debugUrl,
+        wsEndpoint: launch?.wsEndpoint
+      };
+    });
   }
 
   /** 返回本机与可下载 Chrome for Testing 内核。 */
@@ -176,6 +199,7 @@ export class BrowserEngine {
       await this.profiles.close(profileId);
     }
     this.runningProfiles.delete(profileId);
+    this.runningLaunches.delete(profileId);
     this.notifyChanged();
   }
 
@@ -268,6 +292,7 @@ export class BrowserEngine {
   private markBrowserClosed(profileId: string): void {
     this.stopBrowserMonitor(profileId);
     this.runningProfiles.delete(profileId);
+    this.runningLaunches.delete(profileId);
     this.notifyChanged();
   }
 
@@ -292,6 +317,7 @@ export class BrowserEngine {
       startUrls: profile.startUrls ?? []
     }, executablePath, (profileId) => this.markBrowserClosed(profileId));
     this.runningProfiles.add(session.profileId);
+    this.runningLaunches.set(session.profileId, { profileId: session.profileId });
     this.notifyChanged();
 
     return { profileId: session.profileId };

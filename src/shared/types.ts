@@ -1,5 +1,7 @@
 /** 管理壳、preload 与核心引擎共享的稳定 DTO。 */
 
+import type { WindowSyncProfile, WindowSyncSession, WindowSyncStartRequest } from './window-sync-types';
+
 /** 代理协议限定为浏览器引擎当前支持的类型。 */
 export type ProxyType = 'http' | 'https' | 'socks5';
 
@@ -282,6 +284,15 @@ export interface AppUpdateEvent {
   readonly message?: string;
 }
 
+/** 设置中心展示的数据目录信息；切换目录只影响下次启动，不自动迁移文件。 */
+export interface AppDataDirectoryInfo {
+  readonly currentPath: string;
+  readonly defaultPath: string;
+  readonly configuredPath?: string;
+  readonly nextStartPath: string;
+  readonly restartRequired: boolean;
+}
+
 /** 本地 Open API 设置，保存在 Electron userData。 */
 export interface OpenApiSettings {
   readonly enabled: boolean;
@@ -327,9 +338,18 @@ export interface BrowserShellApi {
   readonly downloadAppUpdate: () => Promise<AppUpdateEvent>;
   readonly installAppUpdate: () => Promise<void>;
   readonly onAppUpdateEvent: (listener: (event: AppUpdateEvent) => void) => () => void;
+  readonly getAppDataDirectoryInfo: () => Promise<AppDataDirectoryInfo>;
+  readonly chooseAppDataDirectory: () => Promise<AppDataDirectoryInfo>;
+  readonly resetAppDataDirectory: () => Promise<AppDataDirectoryInfo>;
+  readonly openAppDataDirectory: () => Promise<void>;
   readonly getOpenApiInfo: () => Promise<OpenApiInfo>;
   readonly startOpenApiServer: () => Promise<OpenApiInfo>;
   readonly stopOpenApiServer: () => Promise<OpenApiInfo>;
   readonly regenerateOpenApiKey: () => Promise<OpenApiInfo>;
+  readonly listWindowSyncProfiles: () => Promise<readonly WindowSyncProfile[]>;
+  readonly getWindowSyncSession: () => Promise<WindowSyncSession>;
+  readonly startWindowSync: (request: WindowSyncStartRequest) => Promise<WindowSyncSession>;
+  readonly stopWindowSync: () => Promise<WindowSyncSession>;
+  readonly restartWindowSync: (request: WindowSyncStartRequest) => Promise<WindowSyncSession>;
   readonly onProfilesChanged: (listener: () => void) => () => void;
 }

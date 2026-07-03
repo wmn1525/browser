@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { BrowserWindow, dialog, ipcMain, type OpenDialogOptions, type WebContents } from 'electron';
+import { BrowserWindow, dialog, ipcMain, shell, type OpenDialogOptions, type WebContents } from 'electron';
 
 import {
   persistExtensionFolder,
@@ -12,6 +12,7 @@ import type { ProfileDraft } from '../shared/types';
 import type { ProxyPoolItem } from '../shared/types';
 import type { ProfileGroup } from '../shared/types';
 import type { PublicIpInfo } from '../shared/types';
+import type { WindowSyncStartRequest } from '../shared/window-sync-types';
 import {
   browserEngine,
   deleteManagedExtension,
@@ -21,8 +22,10 @@ import {
   proxyPoolStore,
   regenerateOpenApiKey,
   startOpenApiServer,
-  stopOpenApiServer
+  stopOpenApiServer,
+  windowSyncService
 } from './browser-services';
+import { getAppSettingsStore } from './app-settings-store';
 
 interface IpWhoIsResponse {
   readonly success: boolean;
@@ -145,6 +148,30 @@ export function registerBrowserIpc(): void {
     await deleteManagedExtension(extensionId);
   });
 
+  ipcMain.handle('app-settings:data-directory', () =>
+    getAppSettingsStore().getDataDirectoryInfo()
+  );
+
+  ipcMain.handle('app-settings:choose-data-directory', async (event) => {
+    const folderPath = await choosePath(event.sender, { properties: ['openDirectory', 'createDirectory'] });
+    if (!folderPath) {
+      return getAppSettingsStore().getDataDirectoryInfo();
+    }
+    return getAppSettingsStore().setDataDirectory(folderPath);
+  });
+
+  ipcMain.handle('app-settings:reset-data-directory', () =>
+    getAppSettingsStore().resetDataDirectory()
+  );
+
+  ipcMain.handle('app-settings:open-data-directory', async () => {
+    const info = await getAppSettingsStore().getDataDirectoryInfo();
+    const errorMessage = await shell.openPath(info.currentPath);
+    if (errorMessage) {
+      throw new Error(errorMessage);
+    }
+  });
+
   ipcMain.handle('open-api:info', () => localApiServer.getInfo());
 
   ipcMain.handle('open-api:start', () => startOpenApiServer());
@@ -152,6 +179,20 @@ export function registerBrowserIpc(): void {
   ipcMain.handle('open-api:stop', () => stopOpenApiServer());
 
   ipcMain.handle('open-api:regenerate-key', () => regenerateOpenApiKey());
+
+  ipcMain.handle('window-sync:profiles', () => windowSyncService.listProfiles());
+
+  ipcMain.handle('window-sync:session', () => windowSyncService.getSession());
+
+  ipcMain.handle('window-sync:start', (_event, request: WindowSyncStartRequest) =>
+    windowSyncService.start(request)
+  );
+
+  ipcMain.handle('window-sync:stop', () => windowSyncService.stop());
+
+  ipcMain.handle('window-sync:restart', (_event, request: WindowSyncStartRequest) =>
+    windowSyncService.restart(request)
+  );
 
   ipcMain.handle('kernels:list', () => browserEngine.listBrowserKernels());
 

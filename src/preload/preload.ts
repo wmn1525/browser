@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
 
 import type {
+  AppDataDirectoryInfo,
   AppUpdateEvent,
   BrowserKernelDownloadResult,
   BrowserKernelDownloadProgress,
@@ -18,6 +19,11 @@ import type {
   ProxyPoolItem,
   PublicIpInfo
 } from '../shared/types';
+import type {
+  WindowSyncProfile,
+  WindowSyncSession,
+  WindowSyncStartRequest
+} from '../shared/window-sync-types';
 
 /** 受控暴露给 renderer 的浏览器管理 API。 */
 const api: BrowserShellApi = {
@@ -71,6 +77,14 @@ const api: BrowserShellApi = {
     ipcRenderer.invoke('app-updates:download') as Promise<AppUpdateEvent>,
   installAppUpdate: () =>
     ipcRenderer.invoke('app-updates:install') as Promise<void>,
+  getAppDataDirectoryInfo: () =>
+    ipcRenderer.invoke('app-settings:data-directory') as Promise<AppDataDirectoryInfo>,
+  chooseAppDataDirectory: () =>
+    ipcRenderer.invoke('app-settings:choose-data-directory') as Promise<AppDataDirectoryInfo>,
+  resetAppDataDirectory: () =>
+    ipcRenderer.invoke('app-settings:reset-data-directory') as Promise<AppDataDirectoryInfo>,
+  openAppDataDirectory: () =>
+    ipcRenderer.invoke('app-settings:open-data-directory') as Promise<void>,
   getOpenApiInfo: () =>
     ipcRenderer.invoke('open-api:info') as Promise<OpenApiInfo>,
   startOpenApiServer: () =>
@@ -79,6 +93,16 @@ const api: BrowserShellApi = {
     ipcRenderer.invoke('open-api:stop') as Promise<OpenApiInfo>,
   regenerateOpenApiKey: () =>
     ipcRenderer.invoke('open-api:regenerate-key') as Promise<OpenApiInfo>,
+  listWindowSyncProfiles: () =>
+    ipcRenderer.invoke('window-sync:profiles') as Promise<readonly WindowSyncProfile[]>,
+  getWindowSyncSession: () =>
+    ipcRenderer.invoke('window-sync:session') as Promise<WindowSyncSession>,
+  startWindowSync: (request: WindowSyncStartRequest) =>
+    ipcRenderer.invoke('window-sync:start', request) as Promise<WindowSyncSession>,
+  stopWindowSync: () =>
+    ipcRenderer.invoke('window-sync:stop') as Promise<WindowSyncSession>,
+  restartWindowSync: (request: WindowSyncStartRequest) =>
+    ipcRenderer.invoke('window-sync:restart', request) as Promise<WindowSyncSession>,
   onBrowserKernelDownloadProgress: (listener: (progress: BrowserKernelDownloadProgress) => void) => {
     const channelListener = (_event: IpcRendererEvent, progress: BrowserKernelDownloadProgress): void => listener(progress);
     ipcRenderer.on('kernels:download-progress', channelListener);

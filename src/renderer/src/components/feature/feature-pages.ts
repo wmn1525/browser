@@ -99,30 +99,25 @@ export const featurePages: readonly FeaturePageConfig[] = [
     ]
   },
   {
-    key: 'automation',
-    title: '自动化 / API',
-    summary: '自动化页参考 AdsPower Local API、GoLogin API、Dolphin Anty DevTools 自动化流程，围绕 CDP 连接与脚本执行。',
-    docRefs: ['AdsPower Local API', 'GoLogin API', 'Dolphin CDP'],
-    cards: [
-      {
-        title: '本地 API',
-        description: '暴露 profile 查询、创建、启动、关闭和状态检查接口。',
-        steps: ['启用本地 API', '生成访问 token', '限制本机或局域网访问'],
-        actions: [
-          { label: '开启 API', message: '本地 API 开关面板已打开' },
-          { label: '复制示例', message: 'GET /profiles, POST /profiles/:id/launch' }
-        ]
-      },
-      {
-        title: 'CDP / Puppeteer / Playwright',
-        description: 'Chromium profile 启动后返回 wsEndpoint，可交给 Puppeteer 或 Playwright 连接。',
-        steps: ['启动 Chromium profile', '读取 wsEndpoint', '脚本连接后执行自动化任务'],
-        actions: [
-          { label: '查看连接信息', message: '请先启动一个 profile，然后在详情中查看 wsEndpoint' },
-          { label: '查看文档', message: '参考 Dolphin Anty / GoLogin 自动化文档' }
-        ]
-      }
-    ]
+    key: 'automation-api-mcp',
+    title: 'API&MCP',
+    summary: '本地 Open API 和 MCP 接入文档，用于外部脚本、Puppeteer、Playwright 或 MCP Server 调用 profile 能力。',
+    docRefs: ['AdsPower Local API', 'GoLogin API', 'MCP Tools'],
+    cards: []
+  },
+  {
+    key: 'automation-window-sync',
+    title: '窗口同步',
+    summary: '参考 Open-Anti-Browser 同步器，把 Chromium 主控窗口的导航、点击、输入、滚动、键盘和鼠标轨迹同步到跟随窗口。',
+    docRefs: ['Open-Anti-Browser Synchronizer', 'Chromium CDP'],
+    cards: []
+  },
+  {
+    key: 'settings',
+    title: '设置中心',
+    summary: '集中管理本机应用设置，当前先暴露数据文件夹定位与手动迁移后的目录切换。',
+    docRefs: ['Local userData', 'Manual Migration'],
+    cards: []
   },
   {
     key: 'team',

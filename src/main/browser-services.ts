@@ -6,6 +6,7 @@ import { ManagedExtensionStore } from './managed-extension-store';
 import { OpenApiSettingsStore } from './open-api-settings-store';
 import { ProfileGroupStore } from './profile-group-store';
 import { ProxyPoolStore } from './proxy-pool-store';
+import { WindowSyncService } from './window-sync-service';
 
 export const managedExtensionStore = new ManagedExtensionStore();
 export const browserEngine = new BrowserEngine({
@@ -14,6 +15,9 @@ export const browserEngine = new BrowserEngine({
 export const profileGroupStore = new ProfileGroupStore();
 export const proxyPoolStore = new ProxyPoolStore();
 export const openApiSettingsStore = new OpenApiSettingsStore();
+export const windowSyncService = new WindowSyncService({
+  listProfiles: () => browserEngine.listWindowSyncProfiles()
+});
 
 export const localApiServer = new LocalApiServer({
   getSettings: () => openApiSettingsStore.get(),

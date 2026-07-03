@@ -70,7 +70,7 @@ export class OpenApiSettingsStore {
     return {
       enabled: true,
       apiKey: createApiKey(),
-      port: 18000
+      port: 20081
     };
   }
 

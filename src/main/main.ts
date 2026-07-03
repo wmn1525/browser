@@ -1,30 +1,17 @@
 import { app, BrowserWindow, Menu, Tray } from 'electron';
-import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { checkForAppUpdatesAtStartup, registerAppUpdateIpc } from './app-updater';
-import { localApiServer } from './browser-services';
-import { registerBrowserIpc } from './ipc';
+import { configureAppDataDirectory } from './app-settings-store';
 
 /** Electron 管理壳启动入口。 */
 
-configureDevelopmentDataPath();
+const appSettingsReady = configureAppDataDirectory(app);
 
 let mainWindow: BrowserWindow | undefined;
 let tray: Tray | undefined;
 let isQuitting = false;
-
-/** 开发版和安装版不能共享 Chromium 缓存目录，否则 Windows 目录锁会导致 0x5 拒绝访问。 */
-function configureDevelopmentDataPath(): void {
-  if (app.isPackaged) {
-    return;
-  }
-
-  const userDataPath = join(app.getPath('appData'), `${app.getName()}-dev`);
-  mkdirSync(userDataPath, { recursive: true });
-  app.setPath('userData', userDataPath);
-  app.setPath('sessionData', userDataPath);
-}
+let stopLocalApiServer: (() => void) | undefined;
 
 /** 创建 Electron 管理壳窗口，业务能力全部经 preload 暴露。 */
 function createMainWindow(): void {
@@ -115,7 +102,15 @@ function quitApp(): void {
 }
 
 /** 正式安装包启动后检查线上版本，开发环境不访问发布源。 */
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+  await appSettingsReady;
+  const [{ localApiServer }, { registerBrowserIpc }] = await Promise.all([
+    import('./browser-services'),
+    import('./ipc')
+  ]);
+  stopLocalApiServer = () => {
+    void localApiServer.stop();
+  };
   Menu.setApplicationMenu(null);
   registerAppUpdateIpc();
   registerBrowserIpc();
@@ -131,5 +126,5 @@ app.whenReady().then(() => {
 
 app.on('before-quit', () => {
   isQuitting = true;
-  void localApiServer.stop();
+  stopLocalApiServer?.();
 });
