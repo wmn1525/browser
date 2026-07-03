@@ -14,6 +14,7 @@
     "test:profile-table-ui": "node scripts/test-profile-table-ui.cjs",
     "test:topbar-ui": "node scripts/test-topbar-ui.cjs",
     "test:managed-extensions": "node scripts/test-managed-extension-service.cjs && node scripts/test-managed-extension-profile.cjs && node scripts/test-managed-extension-ui.cjs",
+    "test:open-api": "node scripts/test-open-api-service.cjs && node scripts/test-open-api-ui.cjs",
     "typecheck": "tsc -p tsconfig.main.json --noEmit && tsc -p tsconfig.renderer.json --noEmit"
   },
   "dependencies": {

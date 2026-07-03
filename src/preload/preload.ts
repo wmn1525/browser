@@ -10,6 +10,7 @@ import type {
   ManagedExtension,
   ManagedExtensionEngine,
   ManagedExtensionUpdate,
+  OpenApiInfo,
   ProfileDetail,
   ProfileDraft,
   ProfileGroup,
@@ -70,6 +71,14 @@ const api: BrowserShellApi = {
     ipcRenderer.invoke('app-updates:download') as Promise<AppUpdateEvent>,
   installAppUpdate: () =>
     ipcRenderer.invoke('app-updates:install') as Promise<void>,
+  getOpenApiInfo: () =>
+    ipcRenderer.invoke('open-api:info') as Promise<OpenApiInfo>,
+  startOpenApiServer: () =>
+    ipcRenderer.invoke('open-api:start') as Promise<OpenApiInfo>,
+  stopOpenApiServer: () =>
+    ipcRenderer.invoke('open-api:stop') as Promise<OpenApiInfo>,
+  regenerateOpenApiKey: () =>
+    ipcRenderer.invoke('open-api:regenerate-key') as Promise<OpenApiInfo>,
   onBrowserKernelDownloadProgress: (listener: (progress: BrowserKernelDownloadProgress) => void) => {
     const channelListener = (_event: IpcRendererEvent, progress: BrowserKernelDownloadProgress): void => listener(progress);
     ipcRenderer.on('kernels:download-progress', channelListener);

@@ -188,6 +188,9 @@ export interface ProfileDetail extends ProfileSummary {
 export interface LaunchResult {
   readonly profileId: string;
   readonly wsEndpoint?: string;
+  readonly port?: number;
+  readonly debugPort?: number;
+  readonly debugUrl?: string;
 }
 
 /** 当前网络出口 IP 展示模型。 */
@@ -279,6 +282,20 @@ export interface AppUpdateEvent {
   readonly message?: string;
 }
 
+/** 本地 Open API 设置，保存在 Electron userData。 */
+export interface OpenApiSettings {
+  readonly enabled: boolean;
+  readonly apiKey: string;
+  readonly port: number;
+}
+
+/** 自动化页面展示的本地 Open API 状态。 */
+export interface OpenApiInfo extends OpenApiSettings {
+  readonly running: boolean;
+  readonly baseUrl: string;
+  readonly docsUrl: string;
+}
+
 /** preload 暴露给 renderer 的最小 API 面。 */
 export interface BrowserShellApi {
   readonly listProfiles: () => Promise<readonly ProfileSummary[]>;
@@ -310,5 +327,9 @@ export interface BrowserShellApi {
   readonly downloadAppUpdate: () => Promise<AppUpdateEvent>;
   readonly installAppUpdate: () => Promise<void>;
   readonly onAppUpdateEvent: (listener: (event: AppUpdateEvent) => void) => () => void;
+  readonly getOpenApiInfo: () => Promise<OpenApiInfo>;
+  readonly startOpenApiServer: () => Promise<OpenApiInfo>;
+  readonly stopOpenApiServer: () => Promise<OpenApiInfo>;
+  readonly regenerateOpenApiKey: () => Promise<OpenApiInfo>;
   readonly onProfilesChanged: (listener: () => void) => () => void;
 }

@@ -147,6 +147,9 @@ export class BrowserEngine {
 
     return {
       profileId,
+      port: session.port,
+      debugPort: session.port,
+      debugUrl: `http://127.0.0.1:${session.port}`,
       wsEndpoint: session.wsEndpoint
     };
   }

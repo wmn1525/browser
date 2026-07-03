@@ -2,11 +2,9 @@ import { randomUUID } from 'node:crypto';
 
 import { BrowserWindow, dialog, ipcMain, type OpenDialogOptions, type WebContents } from 'electron';
 
-import { BrowserEngine } from '../core/browser-engine';
 import {
   persistExtensionFolder,
   persistUploadedExtension,
-  removeExtensionStorage,
   type PersistedExtensionFiles
 } from '../core/extension-manager';
 import type { BrowserKernelDownloadProgress, ManagedExtension, ManagedExtensionEngine, ManagedExtensionUpdate } from '../shared/types';
@@ -14,9 +12,17 @@ import type { ProfileDraft } from '../shared/types';
 import type { ProxyPoolItem } from '../shared/types';
 import type { ProfileGroup } from '../shared/types';
 import type { PublicIpInfo } from '../shared/types';
-import { ManagedExtensionStore } from './managed-extension-store';
-import { ProfileGroupStore } from './profile-group-store';
-import { ProxyPoolStore } from './proxy-pool-store';
+import {
+  browserEngine,
+  deleteManagedExtension,
+  localApiServer,
+  managedExtensionStore,
+  profileGroupStore,
+  proxyPoolStore,
+  regenerateOpenApiKey,
+  startOpenApiServer,
+  stopOpenApiServer
+} from './browser-services';
 
 interface IpWhoIsResponse {
   readonly success: boolean;
@@ -28,13 +34,7 @@ interface IpWhoIsResponse {
 }
 
 /** Electron 主进程 IPC 入口，负责把管理壳请求转交给核心引擎。 */
-const managedExtensionStore = new ManagedExtensionStore();
-const engine = new BrowserEngine({
-  listManagedExtensions: () => managedExtensionStore.list()
-});
-const profileGroupStore = new ProfileGroupStore();
-const proxyPoolStore = new ProxyPoolStore();
-engine.onChanged(() => {
+browserEngine.onChanged(() => {
   for (const window of BrowserWindow.getAllWindows()) {
     window.webContents.send('profiles:changed');
   }
@@ -42,38 +42,38 @@ engine.onChanged(() => {
 
 /** 注册管理壳与核心引擎之间的 IPC 通道。 */
 export function registerBrowserIpc(): void {
-  ipcMain.handle('profiles:list', () => engine.listProfiles());
+  ipcMain.handle('profiles:list', () => browserEngine.listProfiles());
 
   ipcMain.handle('profiles:get', (_event, profileId: string) =>
-    engine.getProfile(profileId)
+    browserEngine.getProfile(profileId)
   );
 
   ipcMain.handle('profiles:create', (_event, draft: ProfileDraft) =>
-    engine.createProfile(draft)
+    browserEngine.createProfile(draft)
   );
 
   ipcMain.handle('profiles:update', (_event, profileId: string, draft: ProfileDraft) =>
-    engine.updateProfile(profileId, draft)
+    browserEngine.updateProfile(profileId, draft)
   );
 
   ipcMain.handle('profiles:duplicate', (_event, profileId: string) =>
-    engine.duplicateProfile(profileId)
+    browserEngine.duplicateProfile(profileId)
   );
 
   ipcMain.handle('profiles:export', (_event, profileId: string) =>
-    engine.exportProfile(profileId)
+    browserEngine.exportProfile(profileId)
   );
 
   ipcMain.handle('profiles:launch', (_event, idOrName: string) =>
-    engine.launchProfile(idOrName)
+    browserEngine.launchProfile(idOrName)
   );
 
   ipcMain.handle('profiles:close', (_event, profileId: string) =>
-    engine.closeProfile(profileId)
+    browserEngine.closeProfile(profileId)
   );
 
   ipcMain.handle('profiles:delete', (_event, profileId: string) =>
-    engine.deleteProfile(profileId)
+    browserEngine.deleteProfile(profileId)
   );
 
   ipcMain.handle('network:get-public-ip', async (): Promise<PublicIpInfo> => {
@@ -142,15 +142,21 @@ export function registerBrowserIpc(): void {
   );
 
   ipcMain.handle('extensions:delete', async (_event, extensionId: string) => {
-    const deleted = await managedExtensionStore.delete(extensionId);
-    removeExtensionStorage(managedExtensionStore.getExtensionsRoot(), deleted.engine, extensionId);
-    await engine.removeDisabledExtensionId(extensionId);
+    await deleteManagedExtension(extensionId);
   });
 
-  ipcMain.handle('kernels:list', () => engine.listBrowserKernels());
+  ipcMain.handle('open-api:info', () => localApiServer.getInfo());
+
+  ipcMain.handle('open-api:start', () => startOpenApiServer());
+
+  ipcMain.handle('open-api:stop', () => stopOpenApiServer());
+
+  ipcMain.handle('open-api:regenerate-key', () => regenerateOpenApiKey());
+
+  ipcMain.handle('kernels:list', () => browserEngine.listBrowserKernels());
 
   ipcMain.handle('kernels:download', (event, kernelId: string) =>
-    engine.downloadBrowserKernel(kernelId, (progress: BrowserKernelDownloadProgress) => {
+    browserEngine.downloadBrowserKernel(kernelId, (progress: BrowserKernelDownloadProgress) => {
       event.sender.send('kernels:download-progress', progress);
     })
   );

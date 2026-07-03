@@ -3,6 +3,7 @@ import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { checkForAppUpdatesAtStartup, registerAppUpdateIpc } from './app-updater';
+import { localApiServer } from './browser-services';
 import { registerBrowserIpc } from './ipc';
 
 /** Electron 管理壳启动入口。 */
@@ -118,6 +119,7 @@ app.whenReady().then(() => {
   Menu.setApplicationMenu(null);
   registerAppUpdateIpc();
   registerBrowserIpc();
+  void localApiServer.start();
   createMainWindow();
   createTray();
   checkForAppUpdatesAtStartup();
@@ -129,4 +131,5 @@ app.whenReady().then(() => {
 
 app.on('before-quit', () => {
   isQuitting = true;
+  void localApiServer.stop();
 });
