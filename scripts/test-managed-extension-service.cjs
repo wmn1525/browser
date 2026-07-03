@@ -61,7 +61,7 @@ try {
   assert.equal(crxPayload.slice(0, 4).toString('binary'), 'PK\u0003\u0004');
 
   const maliciousZip = join(sourceDir, 'bad.zip');
-  writeZip(maliciousZip, [{ name: '../escape.txt', text: 'nope' }]);
+  writeZip(maliciousZip, [{ name: 'C:/escape.txt', text: 'nope' }]);
   assert.throws(() => manager.persistUploadedExtension({
     rootDir: storageDir,
     engine: 'chromium',
