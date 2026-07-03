@@ -13,10 +13,12 @@
     "test:antd-ui": "node scripts/test-antd-ui-replacement.cjs",
     "test:profile-table-ui": "node scripts/test-profile-table-ui.cjs",
     "test:topbar-ui": "node scripts/test-topbar-ui.cjs",
+    "test:managed-extensions": "node scripts/test-managed-extension-service.cjs && node scripts/test-managed-extension-profile.cjs && node scripts/test-managed-extension-ui.cjs",
     "typecheck": "tsc -p tsconfig.main.json --noEmit && tsc -p tsconfig.renderer.json --noEmit"
   },
   "dependencies": {
     "@aitofy/browser-profiles": "^0.2.12",
+    "adm-zip": "^0.5.18",
     "antd": "^6.5.0",
     "chrome-remote-interface": "^0.33.3",
     "electron-updater": "^6.8.9",
@@ -28,6 +30,7 @@
     "tree-kill": "^1.2.2"
   },
   "devDependencies": {
+    "@types/adm-zip": "^0.5.8",
     "@types/node": "^24.0.10",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
