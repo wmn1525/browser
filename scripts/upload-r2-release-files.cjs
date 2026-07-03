@@ -10,13 +10,16 @@ const releaseDir = path.resolve('release');
 
 const files = readdirSync(releaseDir, { withFileTypes: true })
   .filter((item) => item.isFile())
-  .map((item) => item.name);
+  .map((item) => item.name)
+  .filter(isPublishFile)
+  .sort((left, right) => left.localeCompare(right));
 
 if (files.length === 0) {
   throw new Error('No release files found to upload.');
 }
 
 for (const fileName of files) {
+  console.log(`Uploading ${fileName}`);
   const localPath = path.join(releaseDir, fileName);
   const remotePath = `s3://${bucket}/${prefix}${fileName}`;
   execFileSync('aws', [
@@ -30,6 +33,13 @@ for (const fileName of files) {
 }
 
 console.log(`Uploaded ${files.length} release file(s) to s3://${bucket}/${prefix}`);
+
+// 仅发布可下载安装包和更新元数据，避免 zip 或 builder 调试文件误传。
+function isPublishFile(fileName) {
+  if (fileName.endsWith('.zip')) return false;
+  if (fileName === 'latest.yml' || fileName === 'latest-mac.yml') return true;
+  return ['.dmg', '.exe', '.blockmap'].some((suffix) => fileName.endsWith(suffix));
+}
 
 // 统一 R2 前缀格式，保证拼接对象 key 时只有一个尾随斜杠。
 function normalizePrefix(value) {

@@ -12,9 +12,19 @@ permissions:
   contents: read
 
 jobs:
-  build-mac-arm64:
-    name: Build macOS arm64
+  build-mac:
+    name: Build macOS ${{ matrix.arch }}
     runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: arm64
+            command: npm run dist:mac-arm64
+            artifact: imrun-browser-mac-arm64
+          - arch: x64
+            command: npm run dist:mac-x64
+            artifact: imrun-browser-mac-x64
     env:
       # 测试打包阶段不查找本机签名证书，避免 CI 因缺少 Apple 证书失败。
       CSC_IDENTITY_AUTO_DISCOVERY: "false"
@@ -51,7 +61,7 @@ jobs:
         run: npm run typecheck
 
       - name: Build macOS package
-        run: npm run dist:mac-arm64
+        run: ${{ matrix.command }}
 
       - name: Validate R2 config
         shell: bash
@@ -85,6 +95,6 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: imrun-browser-mac-arm64
+          name: ${{ matrix.artifact }}
           path: release/*
           if-no-files-found: error

@@ -30,6 +30,10 @@ jobs:
             os: macos-latest
             artifact: imrun-browser-mac-arm64
             command: npm run dist:mac-arm64
+          - name: macOS x64
+            os: macos-latest
+            artifact: imrun-browser-mac-x64
+            command: npm run dist:mac-x64
 
     env:
       # macOS 未配置签名证书时允许 CI 完成测试打包。
