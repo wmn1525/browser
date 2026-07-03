@@ -107,12 +107,6 @@ export function App(): JSX.Element {
     if (command === 'export') await exportProfile(profileId);
     if (command === 'edit') await openEditProfile(profileId);
     if (command === 'detail') await openDetail(profileId);
-    if (command === 'proxy') await openEditProfile(profileId);
-    if (command === 'account') openFeaturePanel('账号绑定', `环境 ${profileId} 的账号信息管理入口。`, [
-      '记录平台账号、登录邮箱、手机号和备注',
-      '后续可与 Cookie 导入、启动页和自动化脚本联动',
-      '当前版本先保留本地 profile 配置，不上传账号数据'
-    ]);
     await refreshProfiles();
   }
 

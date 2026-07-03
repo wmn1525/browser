@@ -159,6 +159,7 @@ export interface ProfileSummary {
   readonly id: string;
   readonly name: string;
   readonly groupId?: string;
+  readonly browserKernel?: string;
   readonly proxyLabel: string;
   readonly timezoneLabel: string;
   readonly tags: readonly string[];
@@ -326,6 +327,7 @@ export interface BrowserShellApi {
   readonly saveProfileGroups: (groups: readonly ProfileGroup[]) => Promise<void>;
   readonly listProxyPool: () => Promise<readonly ProxyPoolItem[]>;
   readonly saveProxyPool: (items: readonly ProxyPoolItem[]) => Promise<void>;
+  readonly checkProxyPoolItem: (item: ProxyPoolItem) => Promise<ProxyPoolItem>;
   readonly listManagedExtensions: () => Promise<readonly ManagedExtension[]>;
   readonly importManagedExtensionPackage: (engine: ManagedExtensionEngine, name: string) => Promise<ManagedExtension | undefined>;
   readonly importManagedExtensionFolder: (engine: ManagedExtensionEngine, name: string) => Promise<ManagedExtension | undefined>;

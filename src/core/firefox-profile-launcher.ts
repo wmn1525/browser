@@ -2,6 +2,7 @@ import { spawn, type ChildProcess } from 'node:child_process';
 import { copyFile, mkdir, rm, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
+import { anonymizeProxy, closeAnonymizedProxy } from 'proxy-chain';
 
 import type { FingerprintDraft, ProxyDraft } from '../shared/types';
 import { getFirefoxExtensionTargetName } from './extension-manager';
@@ -38,8 +39,17 @@ interface FirefoxRunningSession {
   monitor?: ReturnType<typeof setInterval>;
   /** 最近一次识别到的 Firefox PID，方便后续扩展诊断信息。 */
   pid?: number;
+  /** 带认证代理会先转换为本地免认证代理，关闭浏览器时一并释放。 */
+  anonymizedProxyUrl?: string;
   /** 主动关闭时禁止监控器重复触发退出回调。 */
   closing: boolean;
+}
+
+interface FirefoxProxySession {
+  /** Firefox 实际写入 user.js 的代理配置。 */
+  readonly proxy?: ProxyDraft;
+  /** 由 proxy-chain 启动的本地代理地址，需要在 session 结束时关闭。 */
+  readonly anonymizedProxyUrl?: string;
 }
 
 /** 管理真实 Firefox/Gecko 子进程与独立 profile 目录。 */
@@ -54,37 +64,50 @@ export class FirefoxProfileLauncher {
     onExit: (profileId: string) => void
   ): Promise<FirefoxLaunchResult> {
     const profileDir = this.getProfileDir(profile.id);
-    await mkdir(profileDir, { recursive: true });
-    await this.writeUserPrefs(profile, profileDir);
-    await this.prepareExtensions(profile.extensionPaths, profileDir);
+    const proxySession = await this.prepareProxy(profile.proxy);
+    const launchProfile: FirefoxLaunchProfile = { ...profile, proxy: proxySession.proxy };
 
     const session: FirefoxRunningSession = {
       profileDir,
       onExit,
+      anonymizedProxyUrl: proxySession.anonymizedProxyUrl,
       closing: false
     };
-    this.sessions.set(profile.id, session);
 
-    const child = spawn(executablePath, this.buildArgs(profile, profileDir), {
-      detached: false,
-      stdio: 'ignore',
-      windowsHide: false
-    });
-    session.child = child;
-    session.pid = child.pid;
+    try {
+      await mkdir(profileDir, { recursive: true });
+      await this.writeUserPrefs(launchProfile, profileDir);
+      await this.prepareExtensions(profile.extensionPaths, profileDir);
+      this.sessions.set(profile.id, session);
 
-    child.once('exit', () => {
-      session.child = undefined;
-    });
-    child.unref();
-
-    await new Promise<void>((resolve, reject) => {
-      child.once('spawn', resolve);
-      child.once('error', (error) => {
-        this.sessions.delete(profile.id);
-        reject(error);
+      const child = spawn(executablePath, this.buildArgs(profile, profileDir), {
+        detached: false,
+        stdio: 'ignore',
+        windowsHide: false
       });
-    });
+      session.child = child;
+      session.pid = child.pid;
+
+      child.once('exit', () => {
+        session.child = undefined;
+      });
+      child.unref();
+
+      await new Promise<void>((resolve, reject) => {
+        child.once('spawn', resolve);
+        child.once('error', (error) => {
+          reject(error);
+        });
+      });
+    } catch (error) {
+      if (session.anonymizedProxyUrl) {
+        await closeAnonymizedProxy(session.anonymizedProxyUrl, true);
+      }
+      if (this.sessions.get(profile.id) === session) {
+        this.sessions.delete(profile.id);
+      }
+      throw error;
+    }
 
     this.startMonitor(profile.id, session);
     void this.refreshRealPid(session);
@@ -112,7 +135,7 @@ export class FirefoxProfileLauncher {
       await killProcessTree(pid);
     }
 
-    this.finishClosed(profileId, session);
+    await this.finishClosed(profileId, session);
   }
 
   /** 只表示本应用仍在追踪该 profile，真实进程由监控器持续校准。 */
@@ -136,16 +159,14 @@ export class FirefoxProfileLauncher {
 
   /** 将 UI 代理模型转成 Firefox user.js 偏好项。 */
   private getProxyPrefs(proxy: ProxyDraft): readonly string[] {
-    if (proxy.username || proxy.password) {
-      throw new Error('Firefox 内核暂不支持带账号密码的代理，请使用无认证代理。');
-    }
-
     if (proxy.type === 'socks5') {
       return [
         'user_pref("network.proxy.type", 1);',
         `user_pref("network.proxy.socks", "${escapePref(proxy.host)}");`,
         `user_pref("network.proxy.socks_port", ${proxy.port});`,
         'user_pref("network.proxy.socks_version", 5);',
+        'user_pref("network.proxy.socks_remote_dns", true);',
+        'user_pref("signon.autologin.proxy", true);',
         'user_pref("network.proxy.no_proxies_on", "");'
       ];
     }
@@ -156,6 +177,8 @@ export class FirefoxProfileLauncher {
       `user_pref("network.proxy.http_port", ${proxy.port});`,
       `user_pref("network.proxy.ssl", "${escapePref(proxy.host)}");`,
       `user_pref("network.proxy.ssl_port", ${proxy.port});`,
+      'user_pref("network.proxy.share_proxy_settings", true);',
+      'user_pref("signon.autologin.proxy", true);',
       'user_pref("network.proxy.no_proxies_on", "");'
     ];
   }
@@ -239,7 +262,7 @@ export class FirefoxProfileLauncher {
           return;
         }
 
-        this.finishClosed(profileId, session);
+        void this.finishClosed(profileId, session);
       });
     }, 2000);
   }
@@ -263,14 +286,53 @@ export class FirefoxProfileLauncher {
   }
 
   /** 统一收敛关闭路径，保证 session 和上层运行态一起清理。 */
-  private finishClosed(profileId: string, session: FirefoxRunningSession): void {
+  private async finishClosed(profileId: string, session: FirefoxRunningSession): Promise<void> {
     this.stopMonitor(session);
     this.sessions.delete(profileId);
+    if (session.anonymizedProxyUrl) {
+      await closeAnonymizedProxy(session.anonymizedProxyUrl, true);
+      session.anonymizedProxyUrl = undefined;
+    }
     session.onExit(profileId);
+  }
+
+  /** Firefox 无法直接消费代理账号密码，先转成本地免认证代理避免弹认证框。 */
+  private async prepareProxy(proxy: ProxyDraft | undefined): Promise<FirefoxProxySession> {
+    if (!proxy || (!proxy.username && !proxy.password)) {
+      return { proxy };
+    }
+
+    const anonymizedProxyUrl = await anonymizeProxy(toProxyUrl(proxy));
+    const anonymizedProxy = toProxyDraft(anonymizedProxyUrl);
+    return { proxy: anonymizedProxy, anonymizedProxyUrl };
   }
 }
 
 /** 转义 Firefox pref 字符串，避免路径或代理主机中的引号破坏 user.js。 */
 function escapePref(value: string): string {
   return value.replaceAll('\\', '\\\\').replaceAll('"', '\\"');
+}
+
+/** 将代理 DTO 转成标准 URL，交给 proxy-chain 处理账号密码转发。 */
+function toProxyUrl(proxy: ProxyDraft): string {
+  const url = new URL(`${proxy.type}://${proxy.host}`);
+  url.port = String(proxy.port);
+  url.username = proxy.username ?? '';
+  url.password = proxy.password ?? '';
+  return url.toString();
+}
+
+/** proxy-chain 返回本地 HTTP 代理，Firefox 只需要连接这个免认证入口。 */
+function toProxyDraft(proxyUrl: string): ProxyDraft {
+  const url = new URL(proxyUrl);
+  const port = Number(url.port);
+  if (url.protocol !== 'http:' || !url.hostname || !Number.isInteger(port)) {
+    throw new Error(`本地代理地址异常: ${proxyUrl}`);
+  }
+
+  return {
+    type: 'http',
+    host: url.hostname,
+    port
+  };
 }

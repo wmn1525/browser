@@ -55,7 +55,8 @@ export function ProxyPoolPage(): JSX.Element {
 
   async function addSingleProxy(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
-    const draft = formToProxyDraft(new FormData(event.currentTarget));
+    const form = event.currentTarget;
+    const draft = formToProxyDraft(new FormData(form));
     if (!draft) {
       setMessage('请填写完整代理地址和端口');
       void antdMessage.error('请填写完整代理地址和端口');
@@ -67,7 +68,7 @@ export function ProxyPoolPage(): JSX.Element {
       return;
     }
 
-    event.currentTarget.reset();
+    form.reset();
     closeDialog();
   }
 
@@ -119,18 +120,23 @@ export function ProxyPoolPage(): JSX.Element {
     setSelectedIds((currentIds) => currentIds.filter((id) => !ids.includes(id)));
   }
 
-  function checkProxies(ids: readonly string[]): void {
+  async function checkProxies(ids: readonly string[]): Promise<void> {
     if (ids.length === 0) {
       setMessage('请先选择代理');
       void antdMessage.error('请先选择代理');
       return;
     }
 
-    setProxies((items) => items.map((item) => (ids.includes(item.id) ? { ...item, status: 'checking' } : item)));
-    window.setTimeout(() => {
-      const nextItems = proxies.map((item, index) => (ids.includes(item.id) ? withCheckResult(item, index) : item));
-      void saveProxyPool(nextItems, `已检测 ${ids.length} 条代理`);
-    }, 600);
+    const checkingIds = new Set(ids);
+    const checkingItems = proxies.filter((item) => checkingIds.has(item.id));
+    setProxies((items) => items.map((item) => (checkingIds.has(item.id) ? { ...item, status: 'checking' } : item)));
+
+    const checkedItems = await Promise.all(
+      checkingItems.map((item) => window.browserShell.checkProxyPoolItem(item))
+    );
+    const checkedById = new Map(checkedItems.map((item) => [item.id, item]));
+    const nextItems = proxies.map((item) => checkedById.get(item.id) ?? item);
+    void saveProxyPool(nextItems, `已检测 ${checkingItems.length} 条代理`);
   }
 
   async function saveProxyPool(items: readonly ProxyPoolItem[], nextMessage: string): Promise<boolean> {
@@ -157,7 +163,7 @@ export function ProxyPoolPage(): JSX.Element {
             </button>
           </div>
           <div className="flex gap-2">
-            <Button htmlType="button" onClick={() => checkProxies(selectedIds)}><RefreshCw className="size-4" />检测所选</Button>
+            <Button htmlType="button" onClick={() => void checkProxies(selectedIds)}><RefreshCw className="size-4" />检测所选</Button>
             <Button htmlType="button" onClick={() => openAddDialog('batch')} type="primary"><Plus className="size-4" />新增导入</Button>
           </div>
         </div>
@@ -185,7 +191,7 @@ export function ProxyPoolPage(): JSX.Element {
         <div className="overflow-hidden rounded-lg border bg-card shadow-sm">
           <ProxyTable
             allVisibleSelected={allVisibleSelected}
-            onCheck={(proxyId) => checkProxies([proxyId])}
+            onCheck={(proxyId) => void checkProxies([proxyId])}
             onCopy={copyProxy}
             onDelete={(proxyId) => void removeProxies([proxyId])}
             onEdit={openEditDialog}
@@ -298,19 +304,6 @@ function toProxyItem(draft: ProxyPoolDraft, index: number): ProxyPoolItem {
     id: `proxy-${Date.now()}-${index}`,
     profileCount: 0,
     status: 'unchecked'
-  };
-}
-
-function withCheckResult(proxy: ProxyPoolItem, index: number): ProxyPoolItem {
-  const failed = proxy.host.includes('bad') || proxy.port === 0;
-  const regions = ['US / Los Angeles', 'SG / Singapore', 'JP / Tokyo', 'DE / Frankfurt'];
-  return {
-    ...proxy,
-    exitIp: failed ? undefined : `154.21.${index + 10}.${index + 80}`,
-    lastCheckedAt: new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }),
-    latency: failed ? undefined : 90 + index * 37,
-    region: failed ? undefined : regions[index % regions.length],
-    status: failed ? 'failed' : 'ok'
   };
 }
 

@@ -38,15 +38,20 @@ if (!/label="名称"\s+maxLength=\{30\}/.test(form)) {
 }
 
 const nameHeaderIndex = table.indexOf('<Th>名称</Th>');
-const idHeaderIndex = table.indexOf('<Th>编号</Th>');
-if (nameHeaderIndex === -1 || idHeaderIndex === -1 || nameHeaderIndex > idHeaderIndex) {
-  failures.push('Profile table must show 名称 before 编号.');
+const groupHeaderIndex = table.indexOf('<Th>分组名称</Th>');
+const proxyHeaderIndex = table.indexOf('<Th>代理IP</Th>');
+if (nameHeaderIndex === -1 || groupHeaderIndex === -1 || proxyHeaderIndex === -1 || groupHeaderIndex > proxyHeaderIndex) {
+  failures.push('Profile table must show 代理IP after 分组名称.');
 }
 
 const nameCellIndex = table.indexOf('profile.name ||');
-const idCellIndex = table.indexOf('<Td>{profile.id}</Td>');
-if (nameCellIndex === -1 || idCellIndex === -1 || nameCellIndex > idCellIndex) {
-  failures.push('Profile table row cells must show name before id.');
+const proxyCellIndex = table.indexOf('formatProxyAddress(profile.proxyLabel)');
+if (nameCellIndex === -1 || proxyCellIndex === -1 || nameCellIndex > proxyCellIndex) {
+  failures.push('Profile table row cells must show name before proxy IP.');
+}
+
+if (table.includes('<Th>编号</Th>') || table.includes('<Td>{profile.id}</Td>')) {
+  failures.push('Profile table must not show the 编号 column.');
 }
 
 if (!/sticky right-0/.test(table)) {

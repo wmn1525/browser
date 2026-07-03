@@ -1,8 +1,9 @@
 import { Button, Checkbox, Dropdown, Tag, Tooltip, type MenuProps } from 'antd';
-import { Copy, Download, Eye, Laptop, MoreVertical, Pencil, Play, Power, Settings, Trash2, UserPlus } from 'lucide-react';
+import { Chrome, Copy, Download, Eye, Flame, MoreVertical, Pencil, Play, Power, Trash2 } from 'lucide-react';
 import type { PropsWithChildren } from 'react';
 
 import type { ProfileGroup, ProfileSummary } from '../../../../shared/types';
+import { getKernelEngine } from './browser-kernel-options';
 import { getGroupLabel } from './profile-groups';
 
 export type ProfileCommand =
@@ -12,9 +13,7 @@ export type ProfileCommand =
   | 'duplicate'
   | 'delete'
   | 'export'
-  | 'detail'
-  | 'proxy'
-  | 'account';
+  | 'detail';
 
 interface ProfileTableProps {
   readonly groups: readonly ProfileGroup[];
@@ -40,13 +39,11 @@ export function ProfileTable({
         <table className="w-full table-fixed border-collapse text-left text-sm">
           <colgroup>
             <col className="w-11" />
-            <col className="w-[15%]" />
+            <col className="w-[18%]" />
             <col className="w-[14%]" />
-            <col className="w-[12%]" />
-            <col className="w-[12%]" />
-            <col className="w-[12%]" />
-            <col className="w-[13%]" />
-            <col className="w-[10%]" />
+            <col className="w-[18%]" />
+            <col className="w-[14%]" />
+            <col className="w-[16%]" />
             <col className="w-[116px]" />
           </colgroup>
           <thead>
@@ -60,12 +57,10 @@ export function ProfileTable({
                 />
               </Th>
               <Th>名称</Th>
-              <Th>系统----代理----账号</Th>
-              <Th>编号</Th>
               <Th>分组名称</Th>
+              <Th>代理IP</Th>
               <Th>最近打开时间</Th>
               <Th>标签</Th>
-              <Th>备注</Th>
               <Th className="sticky right-0 z-30 border-l bg-muted">操作</Th>
             </tr>
           </thead>
@@ -80,19 +75,16 @@ export function ProfileTable({
                     }}
                   />
                 </Td>
-                <Td className={profile.name ? 'truncate' : 'truncate text-muted-foreground'}>{profile.name || '————'}</Td>
-                <Td>
-                  <div className="flex min-w-0 items-center gap-2 overflow-hidden">
-                    <Laptop className="size-5 shrink-0 text-blue-500" />
-                    <IconButton onClick={() => onCommand('proxy', profile.id)} title={profile.proxyLabel}><Settings className="size-4" /></IconButton>
-                    <IconButton onClick={() => onCommand('account', profile.id)} title="绑定账号"><UserPlus className="size-4" /></IconButton>
+                <Td className={profile.name ? '' : 'text-muted-foreground'}>
+                  <div className="flex min-w-0 items-center gap-2">
+                    <BrowserTypeIcon kernelId={profile.browserKernel} />
+                    <CellText>{profile.name || '————'}</CellText>
                   </div>
                 </Td>
-                <Td>{profile.id}</Td>
                 <Td><Tag className="max-w-full truncate" color={profile.groupId ? 'blue' : 'default'}>{getGroupLabel(groups, profile.groupId)}</Tag></Td>
+                <Td className="text-xs text-muted-foreground"><CellText>{formatProxyAddress(profile.proxyLabel)}</CellText></Td>
                 <Td className="text-xs text-muted-foreground"><CellText>{formatRelativeTime(profile.lastLaunchedAt)}</CellText></Td>
                 <Td><Tags tags={profile.tags} /></Td>
-                <Td className="text-xs text-muted-foreground"><CellText>{profile.proxyLabel === 'Direct' ? '直连环境' : profile.proxyLabel}</CellText></Td>
                 <Td className="sticky right-0 z-10 border-l bg-card shadow-[-8px_0_12px_-12px_rgba(15,23,42,0.55)]">
                   <div className="flex items-center justify-end gap-2">
                     <RowActionButton onCommand={onCommand} profile={profile} />
@@ -115,6 +107,28 @@ function Tags({ tags }: { readonly tags: readonly string[] }): JSX.Element {
     <div className="flex min-w-0 flex-wrap gap-1">
       {visibleTags.map((tag) => <Tag className="max-w-full truncate" key={tag}>{tag}</Tag>)}
     </div>
+  );
+}
+
+/** 按 profile 保存的内核类型显示浏览器标识，避免只看名称时分不清 Chrome 和 Firefox。 */
+function BrowserTypeIcon({ kernelId }: { readonly kernelId: string | undefined }): JSX.Element {
+  const engine = getKernelEngine(kernelId ?? 'system-chrome');
+  if (engine === 'firefox') {
+    return (
+      <Tooltip title="Firefox">
+        <span className="grid size-5 shrink-0 place-items-center rounded-full bg-orange-50 text-orange-500">
+          <Flame className="size-3.5" />
+        </span>
+      </Tooltip>
+    );
+  }
+
+  return (
+    <Tooltip title="Chrome">
+      <span className="grid size-5 shrink-0 place-items-center rounded-full bg-blue-50 text-blue-500">
+        <Chrome className="size-3.5" />
+      </span>
+    </Tooltip>
   );
 }
 
@@ -173,20 +187,6 @@ function ProfileMoreMenu({
   );
 }
 
-function IconButton({
-  children,
-  onClick,
-  title
-}: PropsWithChildren<{ readonly onClick: () => void; readonly title: string }>): JSX.Element {
-  return (
-    <Tooltip title={title}>
-      <Button className="h-7 w-7 p-0" htmlType="button" onClick={onClick} title={title} type="text">
-        {children}
-      </Button>
-    </Tooltip>
-  );
-}
-
 function Th({ children, className }: PropsWithChildren<{ readonly className?: string }>): JSX.Element {
   return <th className={['sticky top-0 z-20 border-b bg-muted px-3 py-2 text-xs font-semibold text-secondary', className].filter(Boolean).join(' ')}>{children}</th>;
 }
@@ -220,4 +220,12 @@ function formatRelativeTime(timestamp: number | undefined): string {
   ];
   const unit = [...units].reverse().find((item) => diffSeconds >= item.seconds) ?? units[0];
   return `${Math.floor(diffSeconds / unit.seconds)}${unit.name}前`;
+}
+
+function formatProxyAddress(proxyLabel: string): string {
+  if (proxyLabel === 'Direct') {
+    return '直连';
+  }
+
+  return proxyLabel.replace(/^[a-z0-9]+:\/\//i, '');
 }

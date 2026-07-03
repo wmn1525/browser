@@ -57,6 +57,8 @@ const api: BrowserShellApi = {
     ipcRenderer.invoke('proxies:list') as Promise<readonly ProxyPoolItem[]>,
   saveProxyPool: (items: readonly ProxyPoolItem[]) =>
     ipcRenderer.invoke('proxies:save', items) as Promise<void>,
+  checkProxyPoolItem: (item: ProxyPoolItem) =>
+    ipcRenderer.invoke('proxies:check', item) as Promise<ProxyPoolItem>,
   listManagedExtensions: () =>
     ipcRenderer.invoke('extensions:list') as Promise<readonly ManagedExtension[]>,
   importManagedExtensionPackage: (engine: ManagedExtensionEngine, name: string) =>

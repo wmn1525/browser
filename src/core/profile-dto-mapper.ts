@@ -68,10 +68,12 @@ export function normalizeProfileDraft(draft: ProfileDraft): ExtendedProfileConfi
 
 /** 把核心库 profile 转成管理壳稳定展示模型。 */
 export function toProfileSummary(profile: StoredProfile, isRunning: boolean): ProfileSummary {
+  const extendedProfile: ExtendedStoredProfile = profile;
   return {
     id: profile.id,
     name: profile.name,
     groupId: normalizeGroupId(profile.groupId),
+    browserKernel: extendedProfile.browserKernel,
     proxyLabel: getProxyLabel(profile.proxy),
     timezoneLabel: profile.timezone ?? 'System',
     tags: profile.tags ?? [],

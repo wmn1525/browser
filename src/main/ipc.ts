@@ -26,6 +26,7 @@ import {
   windowSyncService
 } from './browser-services';
 import { getAppSettingsStore } from './app-settings-store';
+import { checkProxyPoolItem } from './proxy-checker';
 
 interface IpWhoIsResponse {
   readonly success: boolean;
@@ -102,6 +103,10 @@ export function registerBrowserIpc(): void {
 
   ipcMain.handle('proxies:save', (_event, items: readonly ProxyPoolItem[]) =>
     proxyPoolStore.save(items)
+  );
+
+  ipcMain.handle('proxies:check', (_event, item: ProxyPoolItem) =>
+    checkProxyPoolItem(item)
   );
 
   ipcMain.handle('extensions:list', () => managedExtensionStore.list());
