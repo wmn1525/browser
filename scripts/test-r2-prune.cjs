@@ -42,6 +42,7 @@ try {
   assert.equal(payloads.length, 1, 'R2 cleanup should write one delete payload file.');
   assert.deepEqual(payloads[0].Objects, [
     { Key: 'publish/ImRun Browser-0.1.0-arm64.zip' },
+    { Key: 'publish/mac-arm64/ImRun Browser-0.1.0-arm64.dmg' },
     { Key: 'publish/mac-arm64/ImRun Browser.app/Contents/Frameworks/Electron Framework.framework/Resources/zh_CN.lproj/locale.pak' },
     { Key: 'publish/win-unpacked/ImRun Browser.exe' }
   ]);
@@ -61,6 +62,9 @@ function fakeAwsExecFileSync(command, args) {
       Contents: [
         { Key: 'publish/ImRun Browser-0.2.0-arm64.zip' },
         { Key: 'publish/ImRun Browser-0.1.0-arm64.zip' },
+        { Key: 'publish/mac-arm64/ImRun Browser-0.2.0-arm64.dmg' },
+        { Key: 'publish/mac-arm64/latest-mac.yml' },
+        { Key: 'publish/mac-arm64/ImRun Browser-0.1.0-arm64.dmg' },
         { Key: 'publish/mac-arm64/ImRun Browser.app/Contents/Frameworks/Electron Framework.framework/Resources/zh_CN.lproj/locale.pak' },
         { Key: 'publish/win-unpacked/ImRun Browser.exe' }
       ]

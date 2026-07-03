@@ -18,6 +18,7 @@
     "test:open-api": "node scripts/test-open-api-service.cjs && node scripts/test-open-api-ui.cjs",
     "test:automation": "node scripts/test-window-sync-service.cjs && node scripts/test-automation-subpages-ui.cjs",
     "test:settings-center": "node scripts/test-settings-center.cjs",
+    "test:release-publish": "node scripts/test-release-publish-config.cjs",
     "test:r2-upload": "node scripts/test-r2-upload.cjs",
     "typecheck": "tsc -p tsconfig.main.json --noEmit && tsc -p tsconfig.renderer.json --noEmit"
   },

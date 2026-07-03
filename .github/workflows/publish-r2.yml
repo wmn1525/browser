@@ -26,14 +26,17 @@ jobs:
             os: windows-latest
             artifact: imrun-browser-win-x64
             command: npm run dist:win
+            releasePrefix: ""
           - name: macOS arm64
             os: macos-latest
             artifact: imrun-browser-mac-arm64
             command: npm run dist:mac-arm64
+            releasePrefix: mac-arm64
           - name: macOS x64
             os: macos-latest
             artifact: imrun-browser-mac-x64
             command: npm run dist:mac-x64
+            releasePrefix: mac-x64
 
     env:
       # macOS 未配置签名证书时允许 CI 完成测试打包。
@@ -41,7 +44,7 @@ jobs:
       R2_ACCOUNT_ID: ${{ secrets.CF_R2_ACCOUNT_ID }}
       R2_BUCKET: ${{ secrets.CF_R2_BUCKET }}
       R2_KEEP_RELEASES: ${{ vars.R2_KEEP_RELEASES || '5' }}
-      R2_PREFIX: ${{ vars.CF_R2_PREFIX || 'publish' }}
+      R2_PREFIX: ${{ vars.CF_R2_PREFIX || 'publish' }}/${{ matrix.releasePrefix }}
       R2_ENDPOINT: https://${{ secrets.CF_R2_ACCOUNT_ID }}.r2.cloudflarestorage.com
 
     steps:

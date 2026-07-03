@@ -75,8 +75,8 @@ function collectVersions(objects) {
 }
 
 function shouldDeleteKey(key, retainedVersions) {
-  // win-unpacked 是 electron-builder 的中间产物，不作为下载或更新文件发布。
-  if (key.startsWith(`${prefix}win-unpacked/`) || key.startsWith(`${prefix}mac-arm64/`)) {
+  // 解包目录是 electron-builder 的中间产物，不作为下载或更新文件发布。
+  if (key.startsWith(`${prefix}win-unpacked/`) || isUnpackedMacAppKey(key)) {
     return true;
   }
 
@@ -85,8 +85,17 @@ function shouldDeleteKey(key, retainedVersions) {
 }
 
 function getVersionFromKey(key) {
-  const fileName = path.posix.basename(key);
-  return fileName.match(/\b\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?\b/)?.[0];
+  let fileName = path.posix.basename(key);
+  while (/\.(?:blockmap|dmg|exe|zip|yml)$/.test(fileName)) {
+    fileName = fileName.replace(/\.(?:blockmap|dmg|exe|zip|yml)$/, '');
+  }
+  const versionStem = fileName.replace(/-(?:arm64|x64)$/, '');
+  return versionStem.match(/\b\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/)?.[0];
+}
+
+function isUnpackedMacAppKey(key) {
+  const relativeKey = key.startsWith(prefix) ? key.slice(prefix.length) : key;
+  return /^[^/]+\.app\//.test(relativeKey) || /^mac-(?:arm64|x64)\/[^/]+\.app\//.test(relativeKey);
 }
 
 function compareVersions(left, right) {

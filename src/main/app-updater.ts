@@ -6,6 +6,7 @@ import type { AppUpdateEvent, AppUpdateInfo } from '../shared/types';
 let configured = false;
 let checking = false;
 let latestUpdate: AppUpdateInfo | undefined;
+const publishBaseUrl = 'https://browser.im-run.com/publish/';
 
 /** 注册应用升级 IPC，并绑定 electron-updater 的状态事件。 */
 export function registerAppUpdateIpc(): void {
@@ -87,6 +88,7 @@ function configureAppUpdater(): void {
   configured = true;
   autoUpdater.autoDownload = false;
   autoUpdater.autoInstallOnAppQuit = false;
+  autoUpdater.setFeedURL({ provider: 'generic', url: getUpdateFeedUrl() });
 
   autoUpdater.on('checking-for-update', () => {
     emitUpdateEvent({ status: 'checking', message: '正在检查更新。' });
@@ -125,6 +127,15 @@ function configureAppUpdater(): void {
   autoUpdater.on('error', () => {
     emitUpdateEvent({ status: 'error', message: '应用更新失败。' });
   });
+}
+
+/** macOS 不同架构使用独立更新目录，避免 latest-mac.yml 互相覆盖。 */
+function getUpdateFeedUrl(): string {
+  if (process.platform === 'darwin') {
+    return `${publishBaseUrl}mac-${process.arch}/`;
+  }
+
+  return publishBaseUrl;
 }
 
 /** 将 electron-updater 的完整元信息收敛成 renderer 需要的稳定 DTO。 */
