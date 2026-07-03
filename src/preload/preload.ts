@@ -7,6 +7,9 @@ import type {
   BrowserKernelInfo,
   BrowserShellApi,
   LaunchResult,
+  ManagedExtension,
+  ManagedExtensionEngine,
+  ManagedExtensionUpdate,
   ProfileDetail,
   ProfileDraft,
   ProfileGroup,
@@ -47,6 +50,16 @@ const api: BrowserShellApi = {
     ipcRenderer.invoke('proxies:list') as Promise<readonly ProxyPoolItem[]>,
   saveProxyPool: (items: readonly ProxyPoolItem[]) =>
     ipcRenderer.invoke('proxies:save', items) as Promise<void>,
+  listManagedExtensions: () =>
+    ipcRenderer.invoke('extensions:list') as Promise<readonly ManagedExtension[]>,
+  importManagedExtensionPackage: (engine: ManagedExtensionEngine, name: string) =>
+    ipcRenderer.invoke('extensions:import-package', engine, name) as Promise<ManagedExtension | undefined>,
+  importManagedExtensionFolder: (engine: ManagedExtensionEngine, name: string) =>
+    ipcRenderer.invoke('extensions:import-folder', engine, name) as Promise<ManagedExtension | undefined>,
+  updateManagedExtension: (extensionId: string, update: ManagedExtensionUpdate) =>
+    ipcRenderer.invoke('extensions:update', extensionId, update) as Promise<ManagedExtension>,
+  deleteManagedExtension: (extensionId: string) =>
+    ipcRenderer.invoke('extensions:delete', extensionId) as Promise<void>,
   listBrowserKernels: () =>
     ipcRenderer.invoke('kernels:list') as Promise<readonly BrowserKernelInfo[]>,
   downloadBrowserKernel: (kernelId: string) =>

@@ -1,9 +1,11 @@
 import { BrowserProfiles } from '@aitofy/browser-profiles';
 import type {
+  BrowserKernelEngine,
   BrowserKernelDownloadResult,
   BrowserKernelDownloadProgress,
   BrowserKernelInfo,
   LaunchResult,
+  ManagedExtension,
   ProfileDetail,
   ProfileDraft,
   ProfileSummary
@@ -18,12 +20,35 @@ import {
   toProfileDetail,
   toProfileSummary,
   toProxyDraft,
+  type ExtendedProfileConfig,
   type ExtendedStoredProfile
 } from './profile-dto-mapper';
 
 /** 浏览器引擎层只封装 profile 生命周期，不持有任何 Electron UI 状态。 */
 
 /** 核心浏览器引擎：集中管理 profile 存储、启动和关闭，不依赖 Electron。 */
+export interface ManagedExtensionProvider {
+  readonly listManagedExtensions: () => Promise<readonly ManagedExtension[]>;
+}
+
+/** 根据内核和 profile 禁用列表选出本次启动需要加载的扩展路径。 */
+export function getEnabledExtensionPaths(
+  extensions: readonly ManagedExtension[],
+  engine: BrowserKernelEngine,
+  disabledIds: readonly string[]
+): readonly string[] {
+  const disabled = new Set(disabledIds);
+  return extensions
+    .filter((extension) => extension.engine === engine)
+    .filter((extension) => extension.enabled && extension.exists)
+    .filter((extension) => !disabled.has(extension.id))
+    .map((extension) => extension.effectivePath);
+}
+
+const emptyExtensionProvider: ManagedExtensionProvider = {
+  listManagedExtensions: async () => []
+};
+
 export class BrowserEngine {
   private readonly profiles: BrowserProfiles;
   private readonly kernels = new BrowserKernelManager();
@@ -32,7 +57,7 @@ export class BrowserEngine {
   private readonly monitors = new Map<string, ReturnType<typeof setInterval>>();
   private readonly changeListeners = new Set<() => void>();
 
-  public constructor() {
+  public constructor(private readonly extensionProvider: ManagedExtensionProvider = emptyExtensionProvider) {
     this.profiles = new BrowserProfiles();
   }
 
@@ -107,8 +132,10 @@ export class BrowserEngine {
       return this.launchFirefoxProfile(extendedProfile, kernel.executablePath);
     }
 
+    const extensions = await this.getLaunchExtensionPaths(extendedProfile, kernel.engine);
     const session: BrowserLaunchResult = await this.profiles.launchByIdOrName(idOrName, {
       chromePath: kernel.executablePath,
+      extensions: [...extensions],
       headless: false
     });
 
@@ -156,6 +183,25 @@ export class BrowserEngine {
     }
 
     await this.profiles.delete(profileId);
+    this.notifyChanged();
+  }
+
+  /** 删除扩展后清理所有 profile 中残留的禁用扩展 id。 */
+  public async removeDisabledExtensionId(extensionId: string): Promise<void> {
+    const profiles = await this.profiles.list();
+    for (const profile of profiles) {
+      const extendedProfile: ExtendedStoredProfile = profile;
+      const disabledIds = extendedProfile.disabledGlobalExtensionIds ?? [];
+      const nextIds = disabledIds.filter((id) => id !== extensionId);
+      if (nextIds.length === disabledIds.length) {
+        continue;
+      }
+
+      const updates: Partial<ExtendedProfileConfig> = {
+        disabledGlobalExtensionIds: nextIds
+      };
+      await this.profiles.update(profile.id, updates);
+    }
     this.notifyChanged();
   }
 
@@ -239,6 +285,7 @@ export class BrowserEngine {
       fingerprint: profile.fingerprint,
       loadImages: profile.loadImages,
       loadVideos: profile.loadVideos,
+      extensionPaths: await this.getLaunchExtensionPaths(profile, 'firefox'),
       startUrls: profile.startUrls ?? []
     }, executablePath, (profileId) => this.markBrowserClosed(profileId));
     this.runningProfiles.add(session.profileId);
@@ -262,5 +309,17 @@ export class BrowserEngine {
   /** 把核心库 profile 转成编辑弹窗可用详情。 */
   private toDetail(profile: StoredProfile): ProfileDetail {
     return toProfileDetail(profile, this.runningProfiles.has(profile.id));
+  }
+
+  /** 读取全局扩展并排除当前 profile 禁用项。 */
+  private async getLaunchExtensionPaths(
+    profile: ExtendedStoredProfile,
+    engine: BrowserKernelEngine
+  ): Promise<readonly string[]> {
+    return getEnabledExtensionPaths(
+      await this.extensionProvider.listManagedExtensions(),
+      engine,
+      profile.disabledGlobalExtensionIds ?? []
+    );
   }
 }

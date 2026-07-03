@@ -1,9 +1,10 @@
 import { spawn, type ChildProcess } from 'node:child_process';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, rm, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 
 import type { FingerprintDraft, ProxyDraft } from '../shared/types';
+import { getFirefoxExtensionTargetName } from './extension-manager';
 import { findFirefoxProfileProcesses, killProcessTree } from './firefox-process';
 
 /** Firefox 启动所需的 profile 快照，避免启动器依赖完整业务 DTO。 */
@@ -15,6 +16,7 @@ export interface FirefoxLaunchProfile {
   readonly fingerprint?: FingerprintDraft;
   readonly loadImages?: boolean;
   readonly loadVideos?: boolean;
+  readonly extensionPaths: readonly string[];
   readonly startUrls: readonly string[];
 }
 
@@ -54,6 +56,7 @@ export class FirefoxProfileLauncher {
     const profileDir = this.getProfileDir(profile.id);
     await mkdir(profileDir, { recursive: true });
     await this.writeUserPrefs(profile, profileDir);
+    await this.prepareExtensions(profile.extensionPaths, profileDir);
 
     const session: FirefoxRunningSession = {
       profileDir,
@@ -185,8 +188,29 @@ export class FirefoxProfileLauncher {
       lines.push('user_pref("media.autoplay.default", 5);');
       lines.push('user_pref("media.block-autoplay-until-in-foreground", true);');
     }
+    if (profile.extensionPaths.length > 0) {
+      lines.push('user_pref("extensions.autoDisableScopes", 0);');
+      lines.push('user_pref("extensions.enabledScopes", 15);');
+      lines.push('user_pref("extensions.startupScanScopes", 15);');
+      lines.push('user_pref("extensions.installDistroAddons", false);');
+    }
 
     return lines;
+  }
+
+  /** Firefox 通过 profile/extensions 目录安装 XPI，启动前复制本次启用的扩展。 */
+  private async prepareExtensions(extensionPaths: readonly string[], profileDir: string): Promise<void> {
+    const extensionDir = join(profileDir, 'extensions');
+    await rm(extensionDir, { recursive: true, force: true });
+    if (extensionPaths.length === 0) {
+      return;
+    }
+
+    await mkdir(extensionDir, { recursive: true });
+    for (const extensionPath of extensionPaths) {
+      const targetName = getFirefoxExtensionTargetName(extensionPath);
+      await copyFile(extensionPath, join(extensionDir, targetName));
+    }
   }
 
   /** Firefox 接受逗号分隔的语言列表，缺失列表时回退到主语言。 */

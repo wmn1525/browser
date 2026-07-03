@@ -1,11 +1,20 @@
-import { BrowserWindow, ipcMain } from 'electron';
+import { randomUUID } from 'node:crypto';
+
+import { BrowserWindow, dialog, ipcMain, type OpenDialogOptions, type WebContents } from 'electron';
 
 import { BrowserEngine } from '../core/browser-engine';
-import type { BrowserKernelDownloadProgress } from '../shared/types';
+import {
+  persistExtensionFolder,
+  persistUploadedExtension,
+  removeExtensionStorage,
+  type PersistedExtensionFiles
+} from '../core/extension-manager';
+import type { BrowserKernelDownloadProgress, ManagedExtension, ManagedExtensionEngine, ManagedExtensionUpdate } from '../shared/types';
 import type { ProfileDraft } from '../shared/types';
 import type { ProxyPoolItem } from '../shared/types';
 import type { ProfileGroup } from '../shared/types';
 import type { PublicIpInfo } from '../shared/types';
+import { ManagedExtensionStore } from './managed-extension-store';
 import { ProfileGroupStore } from './profile-group-store';
 import { ProxyPoolStore } from './proxy-pool-store';
 
@@ -19,7 +28,10 @@ interface IpWhoIsResponse {
 }
 
 /** Electron 主进程 IPC 入口，负责把管理壳请求转交给核心引擎。 */
-const engine = new BrowserEngine();
+const managedExtensionStore = new ManagedExtensionStore();
+const engine = new BrowserEngine({
+  listManagedExtensions: () => managedExtensionStore.list()
+});
 const profileGroupStore = new ProfileGroupStore();
 const proxyPoolStore = new ProxyPoolStore();
 engine.onChanged(() => {
@@ -89,6 +101,52 @@ export function registerBrowserIpc(): void {
     proxyPoolStore.save(items)
   );
 
+  ipcMain.handle('extensions:list', () => managedExtensionStore.list());
+
+  ipcMain.handle('extensions:import-package', async (event, managedEngine: ManagedExtensionEngine, displayName: string) => {
+    const sourcePath = await chooseExtensionPackage(event.sender, managedEngine);
+    if (!sourcePath) {
+      return undefined;
+    }
+
+    const extensionId = randomUUID();
+    const files = persistUploadedExtension({
+      rootDir: managedExtensionStore.getExtensionsRoot(),
+      engine: managedEngine,
+      extensionId,
+      displayName,
+      sourcePath
+    });
+    return managedExtensionStore.append(toManagedExtension(extensionId, managedEngine, files));
+  });
+
+  ipcMain.handle('extensions:import-folder', async (event, managedEngine: ManagedExtensionEngine, displayName: string) => {
+    const folderPath = await chooseExtensionFolder(event.sender);
+    if (!folderPath) {
+      return undefined;
+    }
+
+    const extensionId = randomUUID();
+    const files = persistExtensionFolder({
+      rootDir: managedExtensionStore.getExtensionsRoot(),
+      engine: managedEngine,
+      extensionId,
+      displayName,
+      folderPath
+    });
+    return managedExtensionStore.append(toManagedExtension(extensionId, managedEngine, files));
+  });
+
+  ipcMain.handle('extensions:update', (_event, extensionId: string, update: ManagedExtensionUpdate) =>
+    managedExtensionStore.update(extensionId, update)
+  );
+
+  ipcMain.handle('extensions:delete', async (_event, extensionId: string) => {
+    const deleted = await managedExtensionStore.delete(extensionId);
+    removeExtensionStorage(managedExtensionStore.getExtensionsRoot(), deleted.engine, extensionId);
+    await engine.removeDisabledExtensionId(extensionId);
+  });
+
   ipcMain.handle('kernels:list', () => engine.listBrowserKernels());
 
   ipcMain.handle('kernels:download', (event, kernelId: string) =>
@@ -126,4 +184,55 @@ function buildRegionLabel(data: IpWhoIsResponse): string {
     (value): value is string => Boolean(value)
   );
   return parts.length > 0 ? parts.join(' ') : '未知区域';
+}
+
+/** 选择本地扩展包，后缀按浏览器内核限制，避免把任意文件传给解包层。 */
+async function chooseExtensionPackage(
+  sender: WebContents,
+  managedEngine: ManagedExtensionEngine
+): Promise<string | undefined> {
+  const options: OpenDialogOptions = {
+    properties: ['openFile'],
+    filters: managedEngine === 'chromium'
+      ? [{ name: 'Chromium 扩展', extensions: ['zip', 'crx'] }]
+      : [{ name: 'Firefox 扩展', extensions: ['xpi', 'zip'] }]
+  };
+  return choosePath(sender, options);
+}
+
+/** 选择本地扩展目录，目录内容由 core 层继续校验 manifest。 */
+async function chooseExtensionFolder(sender: WebContents): Promise<string | undefined> {
+  return choosePath(sender, { properties: ['openDirectory'] });
+}
+
+/** 用触发 IPC 的窗口打开系统选择框，取消时保持 undefined 语义。 */
+async function choosePath(sender: WebContents, options: OpenDialogOptions): Promise<string | undefined> {
+  const window = BrowserWindow.fromWebContents(sender);
+  const result = window
+    ? await dialog.showOpenDialog(window, options)
+    : await dialog.showOpenDialog(options);
+  return result.canceled ? undefined : result.filePaths[0];
+}
+
+/** 把文件持久化结果封装为应用中心元数据。 */
+function toManagedExtension(
+  extensionId: string,
+  managedEngine: ManagedExtensionEngine,
+  files: PersistedExtensionFiles
+): ManagedExtension {
+  const now = new Date().toISOString();
+  return {
+    id: extensionId,
+    engine: managedEngine,
+    name: files.name,
+    source: files.source,
+    fileName: files.fileName,
+    storedPath: files.storedPath,
+    unpackedPath: files.unpackedPath,
+    effectivePath: files.effectivePath,
+    enabled: true,
+    exists: true,
+    createdAt: now,
+    updatedAt: now
+  };
 }

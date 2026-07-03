@@ -298,6 +298,11 @@ export interface BrowserShellApi {
   readonly saveProfileGroups: (groups: readonly ProfileGroup[]) => Promise<void>;
   readonly listProxyPool: () => Promise<readonly ProxyPoolItem[]>;
   readonly saveProxyPool: (items: readonly ProxyPoolItem[]) => Promise<void>;
+  readonly listManagedExtensions: () => Promise<readonly ManagedExtension[]>;
+  readonly importManagedExtensionPackage: (engine: ManagedExtensionEngine, name: string) => Promise<ManagedExtension | undefined>;
+  readonly importManagedExtensionFolder: (engine: ManagedExtensionEngine, name: string) => Promise<ManagedExtension | undefined>;
+  readonly updateManagedExtension: (extensionId: string, update: ManagedExtensionUpdate) => Promise<ManagedExtension>;
+  readonly deleteManagedExtension: (extensionId: string) => Promise<void>;
   readonly listBrowserKernels: () => Promise<readonly BrowserKernelInfo[]>;
   readonly downloadBrowserKernel: (kernelId: string) => Promise<BrowserKernelDownloadResult>;
   readonly onBrowserKernelDownloadProgress: (listener: (progress: BrowserKernelDownloadProgress) => void) => () => void;
