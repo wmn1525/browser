@@ -23,6 +23,7 @@ export interface ExtendedProfileConfig extends ProfileConfig {
   readonly accountName?: string;
   readonly loadImages?: boolean;
   readonly loadVideos?: boolean;
+  readonly disabledGlobalExtensionIds?: readonly string[];
 }
 
 /** 扩展核心库存储模型，读取管理壳额外字段。 */
@@ -37,6 +38,7 @@ export interface ExtendedStoredProfile extends StoredProfile {
   readonly accountName?: string;
   readonly loadImages?: boolean;
   readonly loadVideos?: boolean;
+  readonly disabledGlobalExtensionIds?: readonly string[];
 }
 
 /** 将管理壳 DTO 转为核心库需要的可持久化配置。 */
@@ -58,6 +60,7 @@ export function normalizeProfileDraft(draft: ProfileDraft): ExtendedProfileConfi
     proxy: normalizeProxy(draft.proxy),
     timezone: cleanText(draft.timezone),
     fingerprint: normalizeFingerprint(draft.fingerprint, draft.userAgent),
+    disabledGlobalExtensionIds: normalizeIds(draft.disabledGlobalExtensionIds),
     startUrls: draft.startUrls.map((url) => url.trim()).filter(Boolean),
     tags: draft.tags.map((tag) => tag.trim()).filter(Boolean)
   };
@@ -96,6 +99,7 @@ export function toProfileDetail(profile: StoredProfile, isRunning: boolean): Pro
     proxy: toProxyDraft(profile.proxy),
     timezone: profile.timezone,
     fingerprint: profile.fingerprint,
+    disabledGlobalExtensionIds: normalizeIds(extendedProfile.disabledGlobalExtensionIds),
     startUrls: profile.startUrls ?? []
   };
 }
@@ -220,6 +224,11 @@ function toWebRtcMode(value: FingerprintHookMode | string | undefined): Fingerpr
 function cleanText(value: string | undefined): string | undefined {
   const normalized = value?.trim();
   return normalized && normalized.length > 0 ? normalized : undefined;
+}
+
+/** 清理扩展 id 列表，避免把空字符串保存进 profile 配置。 */
+function normalizeIds(values: readonly string[] | undefined): readonly string[] {
+  return Array.from(new Set(values?.map((value) => value.trim()).filter(Boolean) ?? []));
 }
 
 /** 历史表单曾把“未分组”写成 groupId；读取和保存时统一回到空值语义。 */

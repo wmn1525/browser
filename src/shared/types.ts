@@ -21,6 +21,7 @@ export interface ProfileDraft {
   readonly proxy?: ProxyDraft;
   readonly timezone?: string;
   readonly fingerprint?: FingerprintDraft;
+  readonly disabledGlobalExtensionIds?: readonly string[];
   readonly startUrls: readonly string[];
   readonly tags: readonly string[];
 }
@@ -179,6 +180,7 @@ export interface ProfileDetail extends ProfileSummary {
   readonly proxy?: ProxyDraft;
   readonly timezone?: string;
   readonly fingerprint?: FingerprintDraft;
+  readonly disabledGlobalExtensionIds: readonly string[];
   readonly startUrls: readonly string[];
 }
 
@@ -196,6 +198,34 @@ export interface PublicIpInfo {
 
 /** 浏览器内核所属引擎，启动链路会按引擎类型分流。 */
 export type BrowserKernelEngine = 'chromium' | 'firefox';
+
+/** 应用中心托管扩展使用浏览器内核引擎作为唯一分流维度。 */
+export type ManagedExtensionEngine = BrowserKernelEngine;
+
+/** 扩展来源影响存储方式，启动挂载只依赖 effectivePath。 */
+export type ManagedExtensionSource = 'package' | 'folder';
+
+/** 应用中心扩展元数据，文件本体保存在 Electron userData 的 extensions 目录中。 */
+export interface ManagedExtension {
+  readonly id: string;
+  readonly engine: ManagedExtensionEngine;
+  readonly name: string;
+  readonly source: ManagedExtensionSource;
+  readonly fileName: string;
+  readonly storedPath: string;
+  readonly unpackedPath?: string;
+  readonly effectivePath: string;
+  readonly enabled: boolean;
+  readonly exists: boolean;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+}
+
+/** 扩展列表只允许改显示名和启用状态，避免 renderer 改写文件路径。 */
+export interface ManagedExtensionUpdate {
+  readonly name?: string;
+  readonly enabled?: boolean;
+}
 
 /** 管理壳展示和启动时使用的浏览器内核信息。 */
 export interface BrowserKernelInfo {
