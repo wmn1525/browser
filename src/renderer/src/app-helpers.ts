@@ -92,9 +92,3 @@ export function getTopbarItems(message: string): readonly string[] {
   if (message.includes('账号')) return ['修改昵称', '团队权限', '操作日志'];
   return ['入口已响应', '当前不执行破坏性操作', '可继续接入后端能力'];
 }
-
-export function getFilterItems(message: string): readonly string[] {
-  if (message.includes('列设置')) return ['编号列', '代理列', '标签列', '备注列', '操作列'];
-  if (message.includes('收藏')) return ['收藏视图已响应', '后续可持久化收藏筛选', '不会修改 profile 数据'];
-  return ['请先勾选环境', '可使用批量工具条执行删除', '删除会弹出确认框'];
-}

@@ -6,7 +6,6 @@ import { FeatureDialog, type FeaturePanel, PreviewDialog } from './app-dialogs';
 import {
   getBatchGroupPrompt,
   getErrorMessage,
-  getFilterItems,
   getTopbarDescription,
   getTopbarItems,
   getVisibleProfiles,
@@ -324,14 +323,6 @@ export function App(): JSX.Element {
                   activeGroupId={activeGroupId}
                   groups={groups}
                   keyword={keyword}
-                  onAction={(message) => openFeaturePanel(message, '筛选与表格工具入口。', getFilterItems(message))}
-                  onClear={() => {
-                    setActiveGroupId('all');
-                    setKeyword('');
-                    setTagKeyword('');
-                    setStatus('已清空筛选');
-                  }}
-                  onDeleteSelected={() => void deleteProfiles(selectedIds)}
                   onGroupChange={setActiveGroupId}
                   onKeywordChange={setKeyword}
                   onRefresh={() => void refreshProfiles()}

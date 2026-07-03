@@ -5,10 +5,12 @@ const root = path.resolve(__dirname, '..');
 const stylesPath = path.join(root, 'src', 'renderer', 'src', 'styles.css');
 const tablePath = path.join(root, 'src', 'renderer', 'src', 'components', 'profiles', 'profile-table.tsx');
 const formPath = path.join(root, 'src', 'renderer', 'src', 'components', 'profiles', 'profile-form-fields.tsx');
+const filterbarPath = path.join(root, 'src', 'renderer', 'src', 'components', 'profiles', 'filterbar.tsx');
 
 const styles = fs.readFileSync(stylesPath, 'utf8');
 const table = fs.readFileSync(tablePath, 'utf8');
 const form = fs.readFileSync(formPath, 'utf8');
+const filterbar = fs.readFileSync(filterbarPath, 'utf8');
 const failures = [];
 
 if (!/\/\*\s*\n\s*\* 全局滚动条\s*\n\s*\*\//.test(styles)) {
@@ -49,6 +51,16 @@ if (nameCellIndex === -1 || idCellIndex === -1 || nameCellIndex > idCellIndex) {
 
 if (!/sticky right-0/.test(table)) {
   failures.push('Profile action column must be fixed to the right.');
+}
+
+const actionbar = filterbar.match(/<div className="ml-auto flex gap-2">([\s\S]*?)<\/div>/)?.[1] ?? '';
+const actionButtonTitles = [...actionbar.matchAll(/title="([^"]+)"/g)].map((match) => match[1]);
+if (JSON.stringify(actionButtonTitles) !== JSON.stringify(['刷新'])) {
+  failures.push('Profile filterbar action row must only keep the refresh button.');
+}
+
+if (/\b(?:Bookmark|Settings|Trash2|X)\b/.test(filterbar)) {
+  failures.push('Profile filterbar must not render delete, favorite, settings, or clear icons.');
 }
 
 if (failures.length > 0) {

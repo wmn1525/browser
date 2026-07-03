@@ -1,5 +1,5 @@
 import { Button, Input, Select } from 'antd';
-import { Bookmark, RefreshCw, Search, Settings, Trash2, X } from 'lucide-react';
+import { RefreshCw, Search } from 'lucide-react';
 
 import type { ProfileGroup } from '../../../../shared/types';
 
@@ -7,9 +7,6 @@ interface FilterbarProps {
   readonly activeGroupId: string;
   readonly groups: readonly ProfileGroup[];
   readonly keyword: string;
-  readonly onAction: (action: string) => void;
-  readonly onClear: () => void;
-  readonly onDeleteSelected: () => void;
   readonly onGroupChange: (groupId: string) => void;
   readonly onKeywordChange: (value: string) => void;
   readonly onRefresh: () => void;
@@ -22,9 +19,6 @@ export function Filterbar({
   activeGroupId,
   groups,
   keyword,
-  onAction,
-  onClear,
-  onDeleteSelected,
   onGroupChange,
   onKeywordChange,
   onRefresh,
@@ -51,10 +45,6 @@ export function Filterbar({
       <Input className="w-64" onChange={(event) => onTagKeywordChange(event.target.value)} placeholder="请选择标签 (可多选)" value={tagKeyword} />
       <div className="ml-auto flex gap-2">
         <Button className="h-9 w-9 p-0" htmlType="button" onClick={onRefresh} title="刷新"><RefreshCw className="size-4" /></Button>
-        <Button className="h-9 w-9 p-0" htmlType="button" onClick={onDeleteSelected} title="删除"><Trash2 className="size-4" /></Button>
-        <Button className="h-9 w-9 p-0" htmlType="button" onClick={() => onAction('已加入收藏视图')} title="收藏"><Bookmark className="size-4" /></Button>
-        <Button className="h-9 w-9 p-0" htmlType="button" onClick={() => onAction('表格列设置待接入')} title="设置"><Settings className="size-4" /></Button>
-        <Button className="h-9 w-9 p-0" htmlType="button" onClick={onClear} title="清空筛选"><X className="size-4" /></Button>
       </div>
     </section>
   );
