@@ -66,6 +66,11 @@ export function getKernelDescription(kernelId: string): string {
   return browserKernelOptions.find((option) => option.id === kernelId)?.description ?? '';
 }
 
+/** 根据内核 id 找到所属引擎，表单筛选扩展时使用。 */
+export function getKernelEngine(kernelId: string): BrowserKernelEngine {
+  return browserKernelOptions.find((option) => option.id === kernelId)?.engine ?? 'chromium';
+}
+
 function kernel(majorVersion: number, version: string, description: string): BrowserKernelOption {
   return {
     id: `chrome-${majorVersion}`,

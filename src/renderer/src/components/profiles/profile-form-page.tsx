@@ -5,11 +5,11 @@ import { useEffect, useMemo, useState } from 'react';
 import type { BrowserKernelInfo, ProfileDetail, ProfileDraft, ProfileGroup } from '../../../../shared/types';
 import {
   AccountTab,
-  AppsTab,
   BaseTab,
   FormFooter,
   SummaryPanel
 } from './profile-form-fields';
+import { AppsTab } from './profile-apps-tab';
 import { FingerprintTab } from './profile-fingerprint-tab';
 import { getDefaultKernelId, getKernelLabel } from './browser-kernel-options';
 import { buildProfileDraft } from './profile-form-draft';
@@ -111,7 +111,7 @@ export function ProfileFormPage({ groups, initialProfile, onCancel, onSubmit }: 
               { children: <BaseTab downloadingKernelId={downloadingKernelId} groups={groups} initialProfile={initialProfile} kernel={kernel} kernels={kernels} onDownloadKernel={(id) => void downloadKernel(id)} os={os} osVersion={osVersion} setKernel={setKernel} setOs={selectOs} setOsVersion={setOsVersion} setUserAgent={setUserAgent} setUaPreset={selectUaPreset} uaPresetId={uaPresetId} userAgent={userAgent} />, forceRender: true, key: 'base', label: '基础信息' },
               { children: <ProxyTab initialProfile={initialProfile} />, forceRender: true, key: 'proxy', label: '代理配置' },
               { children: <AccountTab initialProfile={initialProfile} />, forceRender: true, key: 'account', label: '账号平台' },
-              { children: <AppsTab initialProfile={initialProfile} loadImages={loadImages} loadVideos={loadVideos} setLoadImages={setLoadImages} setLoadVideos={setLoadVideos} />, forceRender: true, key: 'apps', label: '应用配置' },
+              { children: <AppsTab initialProfile={initialProfile} kernel={kernel} loadImages={loadImages} loadVideos={loadVideos} setLoadImages={setLoadImages} setLoadVideos={setLoadVideos} />, forceRender: true, key: 'apps', label: '应用配置' },
               { children: <FingerprintTab initialProfile={initialProfile} os={os} randomSeed={fingerprintRandomSeed} />, forceRender: true, key: 'fingerprint', label: '指纹信息' }
             ]}
           />

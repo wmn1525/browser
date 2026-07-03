@@ -189,23 +189,6 @@ export function AccountTab({ initialProfile }: { readonly initialProfile?: Profi
   );
 }
 
-export function AppsTab({ initialProfile, loadImages, loadVideos, setLoadImages, setLoadVideos }: {
-  readonly initialProfile?: ProfileDetail;
-  readonly loadImages: boolean;
-  readonly loadVideos: boolean;
-  readonly setLoadImages: (value: boolean) => void;
-  readonly setLoadVideos: (value: boolean) => void;
-}): JSX.Element {
-  return (
-    <FormCard icon={<Chrome className="size-5" />} title="应用配置">
-      <Field defaultValue={initialProfile?.startUrls.join('\n')} label="启动页" name="urls" placeholder="https://browserscan.net" />
-      <SwitchRow checked={loadImages} label="图片加载" name="loadImages" onCheckedChange={setLoadImages} />
-      <SwitchRow checked={loadVideos} label="视频加载" name="loadVideos" onCheckedChange={setLoadVideos} />
-      <Notice>扩展、书签和脚本模板后续会在应用中心统一管理，创建时可从模板带入。</Notice>
-    </FormCard>
-  );
-}
-
 export function SummaryPanel({ onRandomize, summary }: {
   readonly onRandomize: () => void;
   readonly summary: {
@@ -270,7 +253,7 @@ interface FieldProps extends InputProps {
   readonly label: string;
 }
 
-function Field({ className, label, ...props }: FieldProps): JSX.Element {
+export function Field({ className, label, ...props }: FieldProps): JSX.Element {
   return (
     <label className={['grid grid-cols-[128px_1fr] items-center gap-3', className].filter(Boolean).join(' ')}>
       <span className="text-sm text-secondary">{label}</span>
@@ -367,7 +350,7 @@ function TextareaRow({ defaultValue, hint, label, name, onChange, value }: {
   );
 }
 
-function SwitchRow({ checked, label, name, onCheckedChange }: {
+export function SwitchRow({ checked, label, name, onCheckedChange }: {
   readonly checked: boolean;
   readonly label: string;
   readonly name: string;

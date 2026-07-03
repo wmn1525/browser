@@ -26,6 +26,10 @@ export function buildProfileDraft(form: FormData, initialProfile: ProfileDetail 
       password: text(form.get('proxyPass'))
     } : undefined,
     timezone: text(form.get('timezone')),
+    disabledGlobalExtensionIds: form.getAll('disabledGlobalExtensionIds').flatMap((value) => {
+      const normalized = text(value);
+      return normalized ? [normalized] : [];
+    }),
     fingerprint: {
       platform: text(form.get('platform')),
       language: text(form.get('language')),

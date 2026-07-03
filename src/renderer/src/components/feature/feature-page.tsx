@@ -3,6 +3,7 @@ import { ArrowRight, CheckCircle2, ExternalLink } from 'lucide-react';
 
 import type { ProfileGroup, ProfileSummary } from '../../../../shared/types';
 import { LocalGroupsPage } from './local-groups-page';
+import { ManagedExtensionsPage } from './managed-extensions-page';
 import { ProxyPoolPage } from './proxy-pool-page';
 
 export type ModuleKey = 'profiles' | 'groups' | 'proxies' | 'apps' | 'automation' | 'team';
@@ -64,6 +65,10 @@ export function FeaturePage({
 
   if (config.key === 'proxies') {
     return <ProxyPoolPage />;
+  }
+
+  if (config.key === 'apps') {
+    return <ManagedExtensionsPage />;
   }
 
   return (

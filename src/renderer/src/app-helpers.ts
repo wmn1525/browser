@@ -42,6 +42,7 @@ export function toProfileDraft(detail: ProfileDetail, overrides: Partial<Profile
     searchEngine: detail.searchEngine,
     timezone: detail.timezone,
     userAgent: detail.userAgent,
+    disabledGlobalExtensionIds: detail.disabledGlobalExtensionIds,
     fingerprint: detail.fingerprint,
     startUrls: detail.startUrls,
     tags: detail.tags,
