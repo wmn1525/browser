@@ -1,0 +1,281 @@
+<!doctype html>
+<html class="light" lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Im-Run Browser 是面向团队、多账号运营和自动化场景的企业级指纹浏览器。支持独立环境、代理、内核下载、窗口同步、本地 API 与安全指纹隔离。"
+    />
+    <title>Im-Run Browser - 企业级指纹浏览器</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=block" rel="stylesheet" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="nav-shell">
+        <a class="brand" href="#top" aria-label="Im-Run Browser">
+          <span>Im-Run</span>
+        </a>
+        <nav class="nav-links" aria-label="主导航">
+          <a class="active" href="#features">产品功能</a>
+          <a href="#security">解决方案</a>
+          <a href="#screens">产品截图</a>
+          <a href="#download">下载中心</a>
+          <a href="#api">接口文档</a>
+        </nav>
+        <div class="nav-actions">
+          <a class="login" href="#download">登录</a>
+          <a class="nav-download" href="#download">立即下载</a>
+        </div>
+      </div>
+    </header>
+
+    <main id="top">
+      <section class="hero gradient-mesh">
+        <div class="page-grid hero-grid">
+          <div class="hero-copy">
+            <div class="badge">
+              <span class="material-symbols-outlined">verified_user</span>
+              企业级防关联浏览器
+            </div>
+            <h1>
+              为多账号团队打造的
+              <span>专业指纹浏览器</span>
+            </h1>
+            <p>
+              Im-Run Browser 将独立浏览器环境、真实内核、代理区域、指纹注入和自动化 API
+              收束到一个桌面管理壳里，让批量运营更稳定、更可控。
+            </p>
+            <div class="hero-actions">
+              <a
+                class="primary-action"
+                id="smartDownload"
+                data-platform="windows"
+                href="https://browser.im-run.com/publish/ImRun%20Browser-0.3.0-x64.exe"
+              >
+                <span class="material-symbols-outlined">desktop_windows</span>
+                下载 Windows 版
+              </a>
+              <a class="secondary-action" href="#download">
+                <span class="material-symbols-outlined">laptop_mac</span>
+                查看 macOS 版本
+              </a>
+            </div>
+            <div class="trust-row">
+              <span><i class="material-symbols-outlined">storage</i>本地数据存储</span>
+              <span><i class="material-symbols-outlined">code</i>纯 CDP 指纹注入</span>
+              <span><i class="material-symbols-outlined">settings_backup_restore</i>Chrome 内核管理</span>
+            </div>
+          </div>
+          <div class="hero-preview">
+            <div class="glass-card">
+              <img src="./img/环境管理.png" alt="Im-Run Browser 环境管理界面" />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="stats">
+        <div class="page-grid">
+          <div class="stats-card">
+            <div>
+              <strong>127</strong>
+              <span>配置文件运行状态同步</span>
+            </div>
+            <div>
+              <strong>140</strong>
+              <span>已安装浏览器内核</span>
+            </div>
+            <div>
+              <strong>5</strong>
+              <span>核心业务模块</span>
+            </div>
+            <div>
+              <strong>17+</strong>
+              <span>内核版本</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="features">
+        <div class="page-grid">
+          <div class="section-title center">
+            <p>操作工作台</p>
+            <h2>从环境创建到批量启动，一套闭环工作台</h2>
+            <span>适合跨境运营、广告投放、账号矩阵、数据采集和自动化测试团队。</span>
+          </div>
+          <div class="feature-grid">
+            <article>
+              <span class="feature-icon material-symbols-outlined">web_asset</span>
+              <h3>独立浏览器环境</h3>
+              <p>每个配置文件独立缓存、代理、启动页、Cookie、标签和备注，支持编辑、复制、导出与批量操作。</p>
+            </article>
+            <article>
+              <span class="feature-icon material-symbols-outlined">fingerprint</span>
+              <h3>指纹与系统联动</h3>
+              <p>操作系统、User-Agent、分辨率、语言、时区和 WebGL 元数据保持一致，降低异常组合。</p>
+            </article>
+            <article>
+              <span class="feature-icon material-symbols-outlined">download_for_offline</span>
+              <h3>内核下载与选择</h3>
+              <p>内置 Chrome for Testing 历史版本下载，版本化管理下载进度、解压状态清晰可见。</p>
+            </article>
+            <article>
+              <span class="feature-icon material-symbols-outlined">public</span>
+              <h3>代理与区域展示</h3>
+              <p>支持 HTTP/SOCKS5 代理配置，管理壳展示真实出口 IP 与区域，后续可接入批量检测。</p>
+            </article>
+            <article>
+              <span class="feature-icon material-symbols-outlined">sync</span>
+              <h3>窗口同步</h3>
+              <p>面向多窗口操作场景设计，可扩展同步点击、输入、滚动和窗口编排能力。</p>
+            </article>
+            <article id="api">
+              <span class="feature-icon material-symbols-outlined">api</span>
+              <h3>本地 API 自动化</h3>
+              <p>围绕 Puppeteer、Playwright、CDP 设计，适合批量任务和内外部系统集成。</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section security-section" id="security">
+        <div class="page-grid security-grid">
+          <div class="section-title">
+            <p>安全架构</p>
+            <h2>Electron 管理壳 + 核心浏览器引擎</h2>
+            <span>
+              管理壳专注配置文件、代理、内核、下载与团队工作流；核心浏览器引擎负责启动、CDP 注入和运行态监控。
+              两层职责清晰，便于未来接入团队、云同步和审计。
+            </span>
+            <ul class="check-list">
+              <li><i class="material-symbols-outlined">check_circle</i>本地配置文件与浏览器数据目录隔离</li>
+              <li><i class="material-symbols-outlined">check_circle</i>浏览器关闭监听，运行态自动回收</li>
+              <li><i class="material-symbols-outlined">check_circle</i>真实 Chrome 内核，支持版本化下载</li>
+              <li><i class="material-symbols-outlined">check_circle</i>纯 CDP 注入，无需浏览器插件暴露风险</li>
+            </ul>
+          </div>
+          <div class="architecture">
+            <div class="arch-card">
+              <span class="material-symbols-outlined">shield</span>
+              <div><strong>Electron 管理壳</strong><small>配置 / 代理 / 内核</small></div>
+            </div>
+            <i class="material-symbols-outlined arrow">south</i>
+            <div class="arch-card">
+              <span class="material-symbols-outlined">memory</span>
+              <div><strong>核心浏览器引擎</strong><small>@aitofy/browser-profiles</small></div>
+            </div>
+            <i class="material-symbols-outlined arrow">south</i>
+            <div class="arch-card">
+              <span class="material-symbols-outlined">fingerprint</span>
+              <div><strong>CDP 注入</strong><small>Navigator / WebGL / WebRTC</small></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section screenshots" id="screens">
+        <div class="page-grid">
+          <div class="section-title center">
+            <p>产品截图</p>
+            <h2>真实应用截图</h2>
+            <span>直接展示当前 Im-Run Browser 桌面端能力，不用概念图。</span>
+          </div>
+          <div class="shot-tabs" role="tablist" aria-label="应用截图">
+            <button class="active" data-shot="环境管理.png">环境管理</button>
+            <button data-shot="新建浏览器.png">新建浏览器</button>
+            <button data-shot="应用中心.png">应用中心</button>
+            <button data-shot="窗口同步.png">窗口同步</button>
+            <button data-shot="API.png">API</button>
+          </div>
+          <div class="screenshot-frame">
+            <img id="screenShot" src="./img/环境管理.png" alt="Im-Run Browser 产品截图" />
+          </div>
+        </div>
+      </section>
+
+      <section class="section download-section" id="download">
+        <div class="page-grid">
+          <div class="section-title center">
+            <p>桌面版下载</p>
+            <h2>下载 Im-Run Browser</h2>
+            <span id="downloadSummary">正在读取最新版本信息，选择适合你设备架构的安装包。</span>
+          </div>
+          <div class="download-grid">
+            <a
+              class="download-card primary-card"
+              data-download-card
+              data-platform="windows"
+              data-manifest="https://browser.im-run.com/publish/latest.yml"
+              href="https://browser.im-run.com/publish/ImRun%20Browser-0.3.0-x64.exe"
+            >
+              <span class="download-icon material-symbols-outlined">desktop_windows</span>
+              <h3>Windows</h3>
+              <strong data-title>Im-Run Browser Windows x64</strong>
+              <small>适用于 Windows 10 / 11 64 位</small>
+              <b>下载安装包</b>
+            </a>
+            <a
+              class="download-card"
+              data-download-card
+              data-platform="mac-arm64"
+              data-manifest="https://browser.im-run.com/publish/mac-arm64/latest-mac.yml"
+              href="https://browser.im-run.com/publish/mac-arm64/ImRun%20Browser-0.3.1-arm64.dmg"
+            >
+              <span class="download-icon material-symbols-outlined">laptop_mac</span>
+              <h3>macOS Apple Silicon</h3>
+              <strong data-title>Im-Run Browser macOS arm64</strong>
+              <small>适用于 M1 / M2 / M3 / M4 芯片</small>
+              <b>下载 DMG</b>
+            </a>
+            <a
+              class="download-card"
+              data-download-card
+              data-platform="mac-x64"
+              data-manifest="https://browser.im-run.com/publish/mac-x64/latest-mac.yml"
+              href="https://browser.im-run.com/publish/mac-x64/ImRun%20Browser-0.3.1-x64.dmg"
+            >
+              <span class="download-icon material-symbols-outlined">computer</span>
+              <h3>macOS Intel</h3>
+              <strong data-title>Im-Run Browser macOS x64</strong>
+              <small>适用于 Intel 芯片 Mac</small>
+              <b>下载 DMG</b>
+            </a>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="page-grid footer-grid">
+        <div class="footer-brand">
+          <strong>Im-Run</strong>
+          <p>为团队打造的企业级指纹浏览器，打造更稳定、更安全的跨境运营环境。</p>
+        </div>
+        <div>
+          <h4>产品</h4>
+          <a href="#features">环境管理</a>
+          <a href="#download">内核库</a>
+          <a href="#api">接口文档</a>
+        </div>
+        <div>
+          <h4>支持</h4>
+          <a href="#screens">帮助中心</a>
+          <a href="#download">联系我们</a>
+          <a href="#security">运行状态</a>
+        </div>
+        <button class="back-top" type="button" onclick="window.scrollTo({top: 0, behavior: 'smooth'})">
+          <span class="material-symbols-outlined">arrow_upward</span>
+        </button>
+      </div>
+      <div class="page-grid copyright">© 2026 Im-Run. 保留所有权利。</div>
+    </footer>
+
+    <script src="./script.js"></script>
+  </body>
+</html>
