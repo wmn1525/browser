@@ -1,7 +1,9 @@
+import { Modal, message as antdMessage } from 'antd';
 import { MapPin } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 import type { ProfileDetail, ProfileDraft, ProfileGroup, ProfileSummary } from '../../shared/types';
+import { confirmDelete } from './antd-confirm';
 import { FeatureDialog, type FeaturePanel, PreviewDialog } from './app-dialogs';
 import {
   getBatchGroupPrompt,
@@ -26,6 +28,7 @@ import { Filterbar } from './components/profiles/filterbar';
 import { ProfileFormPage } from './components/profiles/profile-form-page';
 import { ProfileTable, type ProfileCommand } from './components/profiles/profile-table';
 import { canDeleteGroup, createLocalGroup, getGroupLabel } from './components/profiles/profile-groups';
+import { buildRenewProfileDraft } from './components/profiles/profile-renew-draft';
 import { useAppUpdates } from './hooks/use-app-updates';
 import { useBrowserKernels } from './hooks/use-browser-kernels';
 
@@ -104,6 +107,7 @@ export function App(): JSX.Element {
     if (command === 'close') await runProfileTask(profileId, () => window.browserShell.closeProfile(profileId), '已关闭');
     if (command === 'delete') await deleteProfiles([profileId]);
     if (command === 'duplicate') await runProfileTask(profileId, () => window.browserShell.duplicateProfile(profileId), '已复制');
+    if (command === 'renew') await renewProfile(profileId);
     if (command === 'export') await exportProfile(profileId);
     if (command === 'edit') await openEditProfile(profileId);
     if (command === 'detail') await openDetail(profileId);
@@ -135,13 +139,39 @@ export function App(): JSX.Element {
     setStatus(`已导出并复制到剪贴板: ${profileId}`);
   }
 
+  async function renewProfile(profileId: string): Promise<void> {
+    const detail = await window.browserShell.getProfile(profileId);
+    Modal.confirm({
+      cancelText: '取消',
+      centered: true,
+      content: '将随机生成新的指纹信息，并清理该环境的登录态、Cookie、缓存等浏览器用户数据。',
+      okText: '确认换新',
+      title: `确认一键换新「${detail.name}」？`,
+      onCancel: () => setStatus('已取消一键换新'),
+      onOk: () => runRenewProfile(detail)
+    });
+  }
+
+  async function runRenewProfile(detail: ProfileDetail): Promise<void> {
+    try {
+      setStatus(`正在一键换新: ${detail.name}`);
+      await window.browserShell.renewProfile(detail.id, buildRenewProfileDraft(detail));
+      await refreshProfiles();
+      setStatus(`已一键换新: ${detail.name}`);
+      void antdMessage.success('已清理并换新');
+    } catch (error) {
+      setStatus(`一键换新失败: ${getErrorMessage(error)}`);
+      void antdMessage.error(`清理失败: ${getErrorMessage(error)}`);
+    }
+  }
+
   async function deleteProfiles(profileIds: readonly string[]): Promise<void> {
     if (profileIds.length === 0) {
       setStatus('请先勾选要删除的环境');
       return;
     }
 
-    if (!window.confirm(`确认删除 ${profileIds.length} 个环境？`)) {
+    if (!await confirmDelete(`确认删除 ${profileIds.length} 个环境？`, '删除后会移除本地环境配置和对应浏览器用户数据。')) {
       return;
     }
 
@@ -202,7 +232,7 @@ export function App(): JSX.Element {
       setStatus(`分组 ${current.name} 下仍有环境，不能删除`);
       return;
     }
-    if (!window.confirm(`确认删除空分组「${current.name}」？`)) {
+    if (!await confirmDelete(`确认删除空分组「${current.name}」？`, '该分组为空，删除后不会影响已有环境。')) {
       return;
     }
 

@@ -60,6 +60,10 @@ export function registerBrowserIpc(): void {
     browserEngine.updateProfile(profileId, draft)
   );
 
+  ipcMain.handle('profiles:renew', (_event, profileId: string, draft: ProfileDraft) =>
+    browserEngine.renewProfile(profileId, draft)
+  );
+
   ipcMain.handle('profiles:duplicate', (_event, profileId: string) =>
     browserEngine.duplicateProfile(profileId)
   );

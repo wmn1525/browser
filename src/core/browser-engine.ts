@@ -1,4 +1,4 @@
-import { BrowserProfiles } from '@aitofy/browser-profiles';
+import { BrowserProfiles, launchChrome } from '@aitofy/browser-profiles';
 import type {
   BrowserKernelEngine,
   BrowserKernelDownloadResult,
@@ -11,11 +11,11 @@ import type {
   ProfileSummary
 } from '../shared/types';
 import type { WindowSyncProfile } from '../shared/window-sync-types';
-import type { StoredProfile } from '@aitofy/browser-profiles';
-import type { LaunchResult as BrowserLaunchResult } from '@aitofy/browser-profiles';
+import type { LaunchResult as BrowserLaunchResult, StoredProfile } from '@aitofy/browser-profiles';
 import { BrowserKernelManager } from './browser-kernel-manager';
 import { injectChromiumFingerprintPatch } from './chromium-fingerprint-runtime';
 import { FirefoxProfileLauncher } from './firefox-profile-launcher';
+import { getChromiumProfileDataPath, renewChromiumProfileData } from './profile-data-cleaner';
 import {
   normalizeProfileDraft,
   toProfileDetail,
@@ -24,8 +24,6 @@ import {
   type ExtendedProfileConfig,
   type ExtendedStoredProfile
 } from './profile-dto-mapper';
-
-/** 浏览器引擎层只封装 profile 生命周期，不持有任何 Electron UI 状态。 */
 
 /** 核心浏览器引擎：集中管理 profile 存储、启动和关闭，不依赖 Electron。 */
 export interface ManagedExtensionProvider {
@@ -56,8 +54,10 @@ export class BrowserEngine {
   private readonly firefox = new FirefoxProfileLauncher();
   private readonly runningProfiles = new Set<string>();
   private readonly runningLaunches = new Map<string, LaunchResult>();
+  private readonly runningChromiumLaunches = new Map<string, BrowserLaunchResult>();
   private readonly monitors = new Map<string, ReturnType<typeof setInterval>>();
   private readonly changeListeners = new Set<() => void>();
+  private readonly renewingProfiles = new Map<string, Promise<ProfileSummary>>();
 
   public constructor(private readonly extensionProvider: ManagedExtensionProvider = emptyExtensionProvider) {
     this.profiles = new BrowserProfiles();
@@ -92,6 +92,43 @@ export class BrowserEngine {
       ...normalizeProfileDraft(draft),
       id: undefined
     });
+    if (!profile) {
+      throw new Error(`Profile not found: ${profileId}`);
+    }
+
+    this.notifyChanged();
+    return this.toSummary(profile);
+  }
+
+  /** 换新 profile：先关闭运行实例，清理浏览器用户数据，再保存新的指纹配置。 */
+  public async renewProfile(profileId: string, draft: ProfileDraft): Promise<ProfileSummary> {
+    const renewing = this.renewingProfiles.get(profileId);
+    if (renewing) {
+      return renewing;
+    }
+
+    const task = this.doRenewProfile(profileId, draft).finally(() => {
+      this.renewingProfiles.delete(profileId);
+    });
+    this.renewingProfiles.set(profileId, task);
+    return task;
+  }
+
+  /** 执行真正换新流程；外层负责同一 profile 的并发去重。 */
+  private async doRenewProfile(profileId: string, draft: ProfileDraft): Promise<ProfileSummary> {
+    const existing = await this.profiles.get(profileId);
+    if (!existing) {
+      throw new Error(`Profile not found: ${profileId}`);
+    }
+    if (this.runningProfiles.has(profileId)) {
+      await this.closeProfile(profileId);
+    }
+
+    const existingProfile: ExtendedStoredProfile = existing;
+    const chromiumDataDir = await renewChromiumProfileData(profileId, existingProfile.chromiumDataDir);
+    await this.firefox.clearProfileData(profileId);
+    const updates: Partial<ExtendedProfileConfig> = { ...normalizeProfileDraft(draft), chromiumDataDir, id: undefined };
+    const profile = await this.profiles.update(profileId, updates);
     if (!profile) {
       throw new Error(`Profile not found: ${profileId}`);
     }
@@ -135,7 +172,9 @@ export class BrowserEngine {
     }
 
     const extensions = await this.getLaunchExtensionPaths(extendedProfile, kernel.engine);
-    const session: BrowserLaunchResult = await this.profiles.launchByIdOrName(idOrName, {
+    const session: BrowserLaunchResult = await launchChrome({
+      profile: extendedProfile,
+      userDataDir: getChromiumProfileDataPath(extendedProfile.id, extendedProfile.chromiumDataDir),
       chromePath: kernel.executablePath,
       extensions: [...extensions],
       headless: false
@@ -152,6 +191,7 @@ export class BrowserEngine {
     };
     this.runningProfiles.add(profileId);
     this.runningLaunches.set(profileId, result);
+    this.runningChromiumLaunches.set(profileId, session);
     this.startBrowserMonitor(profileId, session.port);
     this.notifyChanged();
     return result;
@@ -195,11 +235,14 @@ export class BrowserEngine {
     this.stopBrowserMonitor(profileId);
     if (this.firefox.isRunning(profileId)) {
       await this.firefox.close(profileId);
+    } else if (this.runningChromiumLaunches.has(profileId)) {
+      await this.runningChromiumLaunches.get(profileId)?.close();
     } else {
       await this.profiles.close(profileId);
     }
     this.runningProfiles.delete(profileId);
     this.runningLaunches.delete(profileId);
+    this.runningChromiumLaunches.delete(profileId);
     this.notifyChanged();
   }
 
@@ -293,6 +336,7 @@ export class BrowserEngine {
     this.stopBrowserMonitor(profileId);
     this.runningProfiles.delete(profileId);
     this.runningLaunches.delete(profileId);
+    this.runningChromiumLaunches.delete(profileId);
     this.notifyChanged();
   }
 

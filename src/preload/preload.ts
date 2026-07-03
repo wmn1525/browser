@@ -34,6 +34,8 @@ const api: BrowserShellApi = {
     ipcRenderer.invoke('profiles:create', draft) as Promise<ProfileSummary>,
   updateProfile: (profileId: string, draft: ProfileDraft) =>
     ipcRenderer.invoke('profiles:update', profileId, draft) as Promise<ProfileSummary>,
+  renewProfile: (profileId: string, draft: ProfileDraft) =>
+    ipcRenderer.invoke('profiles:renew', profileId, draft) as Promise<ProfileSummary>,
   duplicateProfile: (profileId: string) =>
     ipcRenderer.invoke('profiles:duplicate', profileId) as Promise<ProfileSummary>,
   exportProfile: (profileId: string) =>

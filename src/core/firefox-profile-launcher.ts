@@ -143,6 +143,12 @@ export class FirefoxProfileLauncher {
     return this.sessions.has(profileId);
   }
 
+  /** 清空 Firefox 独立 profile 目录，用于换新时移除登录态、Cookie 和缓存。 */
+  public async clearProfileData(profileId: string): Promise<void> {
+    const profileDir = this.getProfileDir(profileId);
+    await rm(profileDir, { recursive: true, force: true });
+  }
+
   /** 所有 Firefox 独立 profile 固定放在应用私有目录下。 */
   private getProfileDir(profileId: string): string {
     return join(this.root, profileId);

@@ -314,6 +314,7 @@ export interface BrowserShellApi {
   readonly getProfile: (profileId: string) => Promise<ProfileDetail>;
   readonly createProfile: (draft: ProfileDraft) => Promise<ProfileSummary>;
   readonly updateProfile: (profileId: string, draft: ProfileDraft) => Promise<ProfileSummary>;
+  readonly renewProfile: (profileId: string, draft: ProfileDraft) => Promise<ProfileSummary>;
   readonly duplicateProfile: (profileId: string) => Promise<ProfileSummary>;
   readonly exportProfile: (profileId: string) => Promise<string>;
   readonly launchProfile: (idOrName: string) => Promise<LaunchResult>;

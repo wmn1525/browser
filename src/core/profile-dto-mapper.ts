@@ -24,6 +24,7 @@ export interface ExtendedProfileConfig extends ProfileConfig {
   readonly loadImages?: boolean;
   readonly loadVideos?: boolean;
   readonly disabledGlobalExtensionIds?: readonly string[];
+  readonly chromiumDataDir?: string;
 }
 
 /** 扩展核心库存储模型，读取管理壳额外字段。 */
@@ -39,6 +40,7 @@ export interface ExtendedStoredProfile extends StoredProfile {
   readonly loadImages?: boolean;
   readonly loadVideos?: boolean;
   readonly disabledGlobalExtensionIds?: readonly string[];
+  readonly chromiumDataDir?: string;
 }
 
 /** 将管理壳 DTO 转为核心库需要的可持久化配置。 */

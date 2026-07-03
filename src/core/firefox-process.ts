@@ -34,9 +34,13 @@ export async function findFirefoxProfileProcesses(profileDir: string): Promise<r
 
 /** 关闭指定 PID 的进程树；Windows 下由 tree-kill 映射到 taskkill /T /F。 */
 export async function killProcessTree(pid: number): Promise<void> {
+  if (!isProcessRunning(pid)) {
+    return;
+  }
+
   await new Promise<void>((resolve, reject) => {
     treeKill(pid, (error) => {
-      if (!error || isProcessAlreadyGone(error)) {
+      if (!error || isProcessAlreadyGone(error) || !isProcessRunning(pid)) {
         resolve();
         return;
       }
@@ -44,6 +48,16 @@ export async function killProcessTree(pid: number): Promise<void> {
       reject(error);
     });
   });
+}
+
+/** taskkill 前后都确认一次 PID，避免 stale lock 里的旧 PID 让清理失败。 */
+function isProcessRunning(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function toFirefoxProcessInfo(process: ProcessInfo): FirefoxProcessInfo {

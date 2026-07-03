@@ -1,6 +1,6 @@
 import { Button, Checkbox, Dropdown, Tag, Tooltip, type MenuProps } from 'antd';
-import { Chrome, Copy, Download, Eye, Flame, MoreVertical, Pencil, Play, Power, Trash2 } from 'lucide-react';
-import type { PropsWithChildren } from 'react';
+import { Chrome, Copy, Download, Eye, Flame, MoreVertical, Pencil, Play, Power, RefreshCcw, Trash2 } from 'lucide-react';
+import { useState, type PropsWithChildren } from 'react';
 
 import type { ProfileGroup, ProfileSummary } from '../../../../shared/types';
 import { getKernelEngine } from './browser-kernel-options';
@@ -11,6 +11,7 @@ export type ProfileCommand =
   | 'close'
   | 'edit'
   | 'duplicate'
+  | 'renew'
   | 'delete'
   | 'export'
   | 'detail';
@@ -167,21 +168,24 @@ function ProfileMoreMenu({
   readonly onCommand: ProfileTableProps['onCommand'];
   readonly profile: ProfileSummary;
 }): JSX.Element {
+  const [open, setOpen] = useState(false);
   const items: MenuProps['items'] = [
     { key: 'detail', icon: <Eye className="size-4" />, label: '查看详情' },
     { key: 'edit', icon: <Pencil className="size-4" />, label: '编辑' },
     { key: 'duplicate', icon: <Copy className="size-4" />, label: '复制' },
+    { key: 'renew', icon: <RefreshCcw className="size-4" />, label: '一键换新' },
     { key: 'export', icon: <Download className="size-4" />, label: '导出 JSON' },
     { type: 'divider' },
     { danger: true, key: 'delete', icon: <Trash2 className="size-4" />, label: '删除' }
   ];
 
   function handleMenuClick({ key }: { readonly key: string }): void {
-    onCommand(key as ProfileCommand, profile.id);
+    setOpen(false);
+    window.setTimeout(() => onCommand(key as ProfileCommand, profile.id), 0);
   }
 
   return (
-    <Dropdown menu={{ items, onClick: handleMenuClick }} trigger={['click']}>
+    <Dropdown menu={{ items, onClick: handleMenuClick }} onOpenChange={setOpen} open={open} trigger={['click']}>
       <Button className="h-8 w-8 p-0" htmlType="button" type="text"><MoreVertical className="size-4" /></Button>
     </Dropdown>
   );

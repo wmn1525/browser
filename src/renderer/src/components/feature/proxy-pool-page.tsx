@@ -8,6 +8,11 @@ import { parseProxyPoolInput } from './proxy-pool-import';
 import { ProxyTable } from './proxy-pool-table';
 import type { ProxyPoolDraft, ProxyPoolItem, ProxyPoolProtocol, ProxyPoolStatus } from './proxy-pool-types';
 
+interface ProxySaveResult {
+  readonly checkedIds: readonly string[];
+  readonly items: readonly ProxyPoolItem[];
+}
+
 /** 代理管理中间页，提供真实可操作的代理池列表。 */
 export function ProxyPoolPage(): JSX.Element {
   const [proxies, setProxies] = useState<readonly ProxyPoolItem[]>([]);
@@ -70,6 +75,7 @@ export function ProxyPoolPage(): JSX.Element {
 
     form.reset();
     closeDialog();
+    void checkSavedProxies(saved.items, saved.checkedIds);
   }
 
   async function importProxies(): Promise<void> {
@@ -86,9 +92,10 @@ export function ProxyPoolPage(): JSX.Element {
     }
 
     closeDialog();
+    void checkSavedProxies(saved.items, saved.checkedIds);
   }
 
-  async function addDrafts(drafts: readonly ProxyPoolDraft[]): Promise<boolean> {
+  async function addDrafts(drafts: readonly ProxyPoolDraft[]): Promise<ProxySaveResult | undefined> {
     const existingKeys = new Set(proxies.map(getProxyKey));
     const nextItems = drafts
       .filter((draft) => !existingKeys.has(getDraftKey(draft)))
@@ -96,13 +103,15 @@ export function ProxyPoolPage(): JSX.Element {
     if (nextItems.length === 0) {
       setMessage('没有新增代理');
       void antdMessage.error('没有新增代理');
-      return false;
+      return undefined;
     }
 
-    return saveProxyPool([...nextItems, ...proxies], `已新增 ${nextItems.length} 条代理`);
+    const items = [...nextItems, ...proxies];
+    const saved = await saveProxyPool(items, `已新增 ${nextItems.length} 条代理`);
+    return saved ? { checkedIds: nextItems.map((item) => item.id), items } : undefined;
   }
 
-  async function updateProxy(proxy: ProxyPoolItem, draft: ProxyPoolDraft): Promise<boolean> {
+  async function updateProxy(proxy: ProxyPoolItem, draft: ProxyPoolDraft): Promise<ProxySaveResult | undefined> {
     const nextProxy: ProxyPoolItem = {
       ...proxy,
       ...draft,
@@ -112,7 +121,9 @@ export function ProxyPoolPage(): JSX.Element {
       region: undefined,
       status: 'unchecked'
     };
-    return saveProxyPool(proxies.map((item) => (item.id === proxy.id ? nextProxy : item)), '已修改代理');
+    const items = proxies.map((item) => (item.id === proxy.id ? nextProxy : item));
+    const saved = await saveProxyPool(items, '已修改代理');
+    return saved ? { checkedIds: [nextProxy.id], items } : undefined;
   }
 
   async function removeProxies(ids: readonly string[]): Promise<void> {
@@ -127,15 +138,23 @@ export function ProxyPoolPage(): JSX.Element {
       return;
     }
 
+    await checkSavedProxies(proxies, ids);
+  }
+
+  async function checkSavedProxies(items: readonly ProxyPoolItem[], ids: readonly string[]): Promise<void> {
     const checkingIds = new Set(ids);
-    const checkingItems = proxies.filter((item) => checkingIds.has(item.id));
-    setProxies((items) => items.map((item) => (checkingIds.has(item.id) ? { ...item, status: 'checking' } : item)));
+    const checkingItems = items.filter((item) => checkingIds.has(item.id));
+    if (checkingItems.length === 0) {
+      return;
+    }
+
+    setProxies(items.map((item) => (checkingIds.has(item.id) ? { ...item, status: 'checking' } : item)));
 
     const checkedItems = await Promise.all(
       checkingItems.map((item) => window.browserShell.checkProxyPoolItem(item))
     );
     const checkedById = new Map(checkedItems.map((item) => [item.id, item]));
-    const nextItems = proxies.map((item) => checkedById.get(item.id) ?? item);
+    const nextItems = items.map((item) => checkedById.get(item.id) ?? item);
     void saveProxyPool(nextItems, `已检测 ${checkingItems.length} 条代理`);
   }
 

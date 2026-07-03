@@ -3,8 +3,11 @@ import { join } from 'node:path';
 
 import { checkForAppUpdatesAtStartup, registerAppUpdateIpc } from './app-updater';
 import { configureAppDataDirectory } from './app-settings-store';
+import { installConsoleSanitizer } from './console-sanitizer';
 
 /** Electron 管理壳启动入口。 */
+
+installConsoleSanitizer();
 
 const appSettingsReady = configureAppDataDirectory(app);
 
