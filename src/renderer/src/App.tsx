@@ -70,13 +70,13 @@ export function App(): JSX.Element {
     }
   }
 
-  async function refreshGroups(): Promise<void> {
-    setGroups(await window.browserShell.listProfileGroups());
-  }
-
   useEffect(() => {
-    void refreshProfiles();
-    void refreshGroups();
+    void Promise.all([window.browserShell.listProfileGroups(), window.browserShell.listProfiles()]).then(([nextGroups, nextProfiles]) => {
+      setGroups(nextGroups);
+      setProfiles(nextProfiles);
+      setSelectedIds((ids) => ids.filter((id) => nextProfiles.some((profile) => profile.id === id)));
+      setStatus('准备就绪');
+    });
     void refreshPublicIp();
     const timer = window.setInterval(() => setTimeTick((tick) => tick + 1), 60_000);
     const unsubscribe = window.browserShell.onProfilesChanged(() => {

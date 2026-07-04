@@ -7,6 +7,11 @@ const groupPageSource = readFileSync(join(__dirname, '..', 'src', 'renderer', 's
 
 assert.equal(appSource.includes("window.prompt('请输入新分组名称')"), false, 'create group should not use native prompt');
 assert.equal(appSource.includes("window.prompt('请输入新的分组名称'"), false, 'rename group should not use native prompt');
+assert.equal(
+  appSource.includes('Promise.all([window.browserShell.listProfileGroups(), window.browserShell.listProfiles()])'),
+  true,
+  'initial load should read groups with profiles before first profile render'
+);
 assert.equal(groupPageSource.includes('GroupNameDialog'), true, 'local group page should render an in-app name dialog');
 
 console.log('local group dialog tests passed');
