@@ -16,6 +16,12 @@ let tray: Tray | undefined;
 let isQuitting = false;
 let stopLocalApiServer: (() => void) | undefined;
 
+const singleInstanceLock = app.requestSingleInstanceLock();
+if (!singleInstanceLock) {
+  isQuitting = true;
+  app.quit();
+}
+
 /** 创建 Electron 管理壳窗口，业务能力全部经 preload 暴露。 */
 function createMainWindow(): void {
   if (mainWindow) {
@@ -82,6 +88,16 @@ function showMainWindow(): void {
   mainWindow.focus();
 }
 
+/** 第二次启动只唤起现有后台实例，避免托盘常驻时再开一个主进程。 */
+function showMainWindowAfterReady(): void {
+  if (app.isReady()) {
+    showMainWindow();
+    return;
+  }
+
+  void app.whenReady().then(showMainWindow);
+}
+
 /** 创建系统托盘入口，让关闭窗口后的常驻状态可被用户明确控制。 */
 function createTray(): void {
   if (tray) {
@@ -105,27 +121,33 @@ function quitApp(): void {
 }
 
 /** 正式安装包启动后检查线上版本，开发环境不访问发布源。 */
-app.whenReady().then(async () => {
-  await appSettingsReady;
-  const [{ localApiServer }, { registerBrowserIpc }] = await Promise.all([
-    import('./browser-services'),
-    import('./ipc')
-  ]);
-  stopLocalApiServer = () => {
-    void localApiServer.stop();
-  };
-  Menu.setApplicationMenu(null);
-  registerAppUpdateIpc();
-  registerBrowserIpc();
-  void localApiServer.start();
-  createMainWindow();
-  createTray();
-  checkForAppUpdatesAtStartup();
+if (singleInstanceLock) {
+  app.on('second-instance', showMainWindowAfterReady);
+}
 
-  app.on('activate', () => {
-    showMainWindow();
+if (singleInstanceLock) {
+  app.whenReady().then(async () => {
+    await appSettingsReady;
+    const [{ localApiServer }, { registerBrowserIpc }] = await Promise.all([
+      import('./browser-services'),
+      import('./ipc')
+    ]);
+    stopLocalApiServer = () => {
+      void localApiServer.stop();
+    };
+    Menu.setApplicationMenu(null);
+    registerAppUpdateIpc();
+    registerBrowserIpc();
+    void localApiServer.start();
+    createMainWindow();
+    createTray();
+    checkForAppUpdatesAtStartup();
+
+    app.on('activate', () => {
+      showMainWindow();
+    });
   });
-});
+}
 
 app.on('before-quit', () => {
   isQuitting = true;

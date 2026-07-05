@@ -13,7 +13,9 @@ import type {
 import type { WindowSyncProfile } from '../shared/window-sync-types';
 import type { LaunchResult as BrowserLaunchResult, StoredProfile } from '@aitofy/browser-profiles';
 import { BrowserKernelManager } from './browser-kernel-manager';
+import { ChromiumBrowserMonitor } from './chromium-browser-monitor';
 import { injectChromiumFingerprintPatch } from './chromium-fingerprint-runtime';
+import { getEnabledExtensionPaths } from './extension-launch-paths';
 import { FirefoxProfileLauncher } from './firefox-profile-launcher';
 import { getChromiumProfileDataPath, renewChromiumProfileData } from './profile-data-cleaner';
 import {
@@ -25,23 +27,11 @@ import {
   type ExtendedStoredProfile
 } from './profile-dto-mapper';
 
+export { getEnabledExtensionPaths } from './extension-launch-paths';
+
 /** 核心浏览器引擎：集中管理 profile 存储、启动和关闭，不依赖 Electron。 */
 export interface ManagedExtensionProvider {
   readonly listManagedExtensions: () => Promise<readonly ManagedExtension[]>;
-}
-
-/** 根据内核和 profile 禁用列表选出本次启动需要加载的扩展路径。 */
-export function getEnabledExtensionPaths(
-  extensions: readonly ManagedExtension[],
-  engine: BrowserKernelEngine,
-  disabledIds: readonly string[]
-): readonly string[] {
-  const disabled = new Set(disabledIds);
-  return extensions
-    .filter((extension) => extension.engine === engine)
-    .filter((extension) => extension.enabled && extension.exists)
-    .filter((extension) => !disabled.has(extension.id))
-    .map((extension) => extension.effectivePath);
 }
 
 const emptyExtensionProvider: ManagedExtensionProvider = {
@@ -52,12 +42,13 @@ export class BrowserEngine {
   private readonly profiles: BrowserProfiles;
   private readonly kernels = new BrowserKernelManager();
   private readonly firefox = new FirefoxProfileLauncher();
+  private readonly chromiumMonitor = new ChromiumBrowserMonitor();
   private readonly runningProfiles = new Set<string>();
   private readonly runningLaunches = new Map<string, LaunchResult>();
   private readonly runningChromiumLaunches = new Map<string, BrowserLaunchResult>();
-  private readonly monitors = new Map<string, ReturnType<typeof setInterval>>();
   private readonly changeListeners = new Set<() => void>();
   private readonly renewingProfiles = new Map<string, Promise<ProfileSummary>>();
+  private readonly launchingProfiles = new Map<string, Promise<LaunchResult>>();
 
   public constructor(private readonly extensionProvider: ManagedExtensionProvider = emptyExtensionProvider) {
     this.profiles = new BrowserProfiles();
@@ -166,6 +157,25 @@ export class BrowserEngine {
     }
 
     const extendedProfile: ExtendedStoredProfile = profile;
+    const running = this.runningLaunches.get(extendedProfile.id);
+    if (this.runningProfiles.has(extendedProfile.id) && running) {
+      return running;
+    }
+
+    const launching = this.launchingProfiles.get(extendedProfile.id);
+    if (launching) {
+      return launching;
+    }
+
+    const task = this.doLaunchProfile(extendedProfile).finally(() => {
+      this.launchingProfiles.delete(extendedProfile.id);
+    });
+    this.launchingProfiles.set(extendedProfile.id, task);
+    return task;
+  }
+
+  /** 执行真实启动流程；外层负责同一 profile 的运行态和并发去重。 */
+  private async doLaunchProfile(extendedProfile: ExtendedStoredProfile): Promise<LaunchResult> {
     const kernel = await this.kernels.resolveKernel(extendedProfile.browserKernel);
     if (kernel.engine === 'firefox') {
       return this.launchFirefoxProfile(extendedProfile, kernel.executablePath);
@@ -192,7 +202,7 @@ export class BrowserEngine {
     this.runningProfiles.add(profileId);
     this.runningLaunches.set(profileId, result);
     this.runningChromiumLaunches.set(profileId, session);
-    this.startBrowserMonitor(profileId, session.port);
+    this.chromiumMonitor.start(profileId, session.port, (closedProfileId) => this.markBrowserClosed(closedProfileId));
     this.notifyChanged();
     return result;
   }
@@ -232,7 +242,12 @@ export class BrowserEngine {
 
   /** 关闭指定 profile 对应的浏览器实例。 */
   public async closeProfile(profileId: string): Promise<void> {
-    this.stopBrowserMonitor(profileId);
+    const launching = this.launchingProfiles.get(profileId);
+    if (launching) {
+      await launching.catch(() => undefined);
+    }
+
+    this.chromiumMonitor.stop(profileId);
     if (this.firefox.isRunning(profileId)) {
       await this.firefox.close(profileId);
     } else if (this.runningChromiumLaunches.has(profileId)) {
@@ -281,59 +296,9 @@ export class BrowserEngine {
     return () => this.changeListeners.delete(listener);
   }
 
-  /** 通过 CDP HTTP 端点探测外部浏览器是否还活着。 */
-  private startBrowserMonitor(profileId: string, port: number): void {
-    this.stopBrowserMonitor(profileId);
-
-    let failedChecks = 0;
-    const timer = setInterval(() => {
-      void this.checkBrowserAlive(port).then((isAlive) => {
-        if (isAlive) {
-          failedChecks = 0;
-          return;
-        }
-
-        failedChecks += 1;
-        if (failedChecks >= 2) {
-          this.markBrowserClosed(profileId);
-        }
-      });
-    }, 2000);
-
-    this.monitors.set(profileId, timer);
-  }
-
-  /** 停止指定 profile 的运行态探测器。 */
-  private stopBrowserMonitor(profileId: string): void {
-    const timer = this.monitors.get(profileId);
-    if (!timer) {
-      return;
-    }
-
-    clearInterval(timer);
-    this.monitors.delete(profileId);
-  }
-
-  /** 访问 Chrome debug endpoint，失败通常意味着用户已关闭浏览器。 */
-  private async checkBrowserAlive(port: number): Promise<boolean> {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 1200);
-
-    try {
-      const response = await fetch(`http://127.0.0.1:${port}/json/version`, {
-        signal: controller.signal
-      });
-      return response.ok;
-    } catch {
-      return false;
-    } finally {
-      clearTimeout(timeout);
-    }
-  }
-
   /** 用户从浏览器窗口直接关闭时，清理本进程记录的运行状态。 */
   private markBrowserClosed(profileId: string): void {
-    this.stopBrowserMonitor(profileId);
+    this.chromiumMonitor.stop(profileId);
     this.runningProfiles.delete(profileId);
     this.runningLaunches.delete(profileId);
     this.runningChromiumLaunches.delete(profileId);
