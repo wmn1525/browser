@@ -28,10 +28,12 @@ import { ProfileFormPage } from './components/profiles/profile-form-page';
 import { ProfileTable, type ProfileCommand } from './components/profiles/profile-table';
 import { canDeleteGroup, createLocalGroup, getGroupLabel } from './components/profiles/profile-groups';
 import { duplicateProfileWithNewFingerprint } from './components/profiles/profile-duplicate';
+import { ProfileDuplicateDialog } from './components/profiles/profile-duplicate-dialog';
 import { buildRenewProfileDraft } from './components/profiles/profile-renew-draft';
 import { useAppUpdates } from './hooks/use-app-updates';
 import { useBrowserKernels } from './hooks/use-browser-kernels';
 import { useProfileBatch } from './hooks/use-profile-batch';
+import { useProfileDuplicate } from './hooks/use-profile-duplicate';
 import { useProfilePagination } from './hooks/use-profile-pagination';
 
 /** React renderer 根组件，管理 Electron preload 暴露的数据流。 */
@@ -54,9 +56,12 @@ export function App(): JSX.Element {
   const kernelState = useBrowserKernels(setStatus);
   const appUpdates = useAppUpdates(setStatus);
   const tagOptions = getAllTags(profiles);
+  // 移除模式只列所选环境真实带有的标签，避免出现移除一个没人有的标签
+  const selectedTagOptions = getAllTags(profiles.filter((profile) => selectedIds.includes(profile.id)));
   const filteredProfiles = getVisibleProfiles(profiles, activeGroupId, keyword, selectedTags);
   const pagination = useProfilePagination(filteredProfiles, `${activeGroupId}|${keyword}|${selectedTags.join(',')}`);
   const batch = useProfileBatch({ deleteProfiles, groups, refreshProfiles, selectedIds, setStatus });
+  const duplicate = useProfileDuplicate({ profiles, refreshProfiles, setStatus });
   // 只统计已选中的运行态环境，批量启动/关闭按钮据此禁用
   const runningSelectedCount = profiles.filter((profile) => selectedIds.includes(profile.id) && profile.isRunning).length;
 
@@ -120,6 +125,7 @@ export function App(): JSX.Element {
     if (command === 'close') await runProfileTask(profileId, () => window.browserShell.closeProfile(profileId), '已关闭');
     if (command === 'delete') await deleteProfiles([profileId]);
     if (command === 'duplicate') await runProfileTask(profileId, () => duplicateProfileWithNewFingerprint(profileId), '已复制');
+    if (command === 'duplicate-many') duplicate.request(profileId);
     if (command === 'renew') await renewProfile(profileId);
     if (command === 'export') await exportProfile(profileId);
     if (command === 'edit') await openEditProfile(profileId);
@@ -372,8 +378,9 @@ export function App(): JSX.Element {
             </footer>
           </main>
         </div>
-        <BatchTagDialog onCancel={batch.closeDialog} onSubmit={(tags) => void batch.applyTags(tags)} open={batch.dialog === 'tag'} />
+        <BatchTagDialog onCancel={batch.closeDialog} onSubmit={(tags, mode) => void batch.applyTags(tags, mode)} open={batch.dialog === 'tag'} selectedTagOptions={selectedTagOptions} tagOptions={tagOptions} />
         <BatchGroupDialog groups={groups} onCancel={batch.closeDialog} onSubmit={(groupId) => void batch.applyGroup(groupId)} open={batch.dialog === 'group'} />
+        <ProfileDuplicateDialog onCancel={duplicate.close} onSubmit={(names) => void duplicate.run(names)} open={duplicate.open} profileName={duplicate.targetName} usedNames={duplicate.usedNames} />
         <PreviewDialog onOpenChange={() => setPreviewText('')} text={previewText} title={previewTitle} />
         <FeatureDialog onClose={() => setFeaturePanel(undefined)} panel={featurePanel} />
         <AppUpdateDialog event={appUpdates.event} onDownload={() => void appUpdates.downloadUpdate()} onInstall={() => void appUpdates.installUpdate()} onOpenChange={appUpdates.setOpen} onSkip={appUpdates.skipVersion} open={appUpdates.open} />

@@ -1,5 +1,5 @@
 import { Button, Checkbox, Dropdown, Tag, Tooltip, type MenuProps } from 'antd';
-import { Chrome, Copy, Download, Eye, Flame, MoreVertical, Pencil, Play, Power, RefreshCcw, Trash2 } from 'lucide-react';
+import { Chrome, Copy, CopyPlus, Download, Eye, Flame, MoreVertical, Pencil, Play, Power, RefreshCcw, Trash2 } from 'lucide-react';
 import { useState, type PropsWithChildren } from 'react';
 
 import type { ProfileGroup, ProfileSummary } from '../../../../shared/types';
@@ -11,6 +11,7 @@ export type ProfileCommand =
   | 'close'
   | 'edit'
   | 'duplicate'
+  | 'duplicate-many'
   | 'renew'
   | 'delete'
   | 'export'
@@ -174,6 +175,7 @@ function ProfileMoreMenu({
     { key: 'detail', icon: <Eye className="size-4" />, label: '查看详情' },
     { key: 'edit', icon: <Pencil className="size-4" />, label: '编辑' },
     { key: 'duplicate', icon: <Copy className="size-4" />, label: '复制' },
+    { key: 'duplicate-many', icon: <CopyPlus className="size-4" />, label: '复制多份' },
     { key: 'renew', icon: <RefreshCcw className="size-4" />, label: '一键换新' },
     { key: 'export', icon: <Download className="size-4" />, label: '导出 JSON' },
     { type: 'divider' },

@@ -34,3 +34,32 @@ export async function duplicateProfileWithNewFingerprint(profileId: string): Pro
   const copy = await window.browserShell.duplicateProfile(profileId);
   await window.browserShell.updateProfile(copy.id, buildDuplicateProfileDraft(detail, copy.name));
 }
+
+/** 副本名按 baseName-1、baseName-2 顺延；已被占用的编号直接跳过，避免和现有环境重名。 */
+export function buildCopyNames(baseName: string, count: number, usedNames: readonly string[]): readonly string[] {
+  const used = new Set(usedNames);
+  const names: string[] = [];
+  for (let index = 1; names.length < count; index += 1) {
+    const candidate = `${baseName}-${index}`;
+    if (!used.has(candidate)) {
+      names.push(candidate);
+      used.add(candidate);
+    }
+  }
+
+  return names;
+}
+
+/** 把一个环境复制成多份：每份单独重新随机指纹，逐份上报进度。 */
+export async function duplicateProfileTimes(
+  profileId: string,
+  names: readonly string[],
+  onProgress: (done: number) => void
+): Promise<void> {
+  const detail = await window.browserShell.getProfile(profileId);
+  for (const [index, name] of names.entries()) {
+    const copy = await window.browserShell.duplicateProfile(profileId);
+    await window.browserShell.updateProfile(copy.id, buildDuplicateProfileDraft(detail, name));
+    onProgress(index + 1);
+  }
+}

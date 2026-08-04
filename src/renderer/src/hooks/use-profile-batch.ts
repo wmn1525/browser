@@ -4,8 +4,27 @@ import { useState } from 'react';
 import type { ProfileGroup } from '../../../shared/types';
 import { confirmWithAntd } from '../antd-confirm';
 import { getErrorMessage, toProfileDraft } from '../app-helpers';
+import type { BatchTagMode } from '../components/profiles/batch-dialogs';
 import { duplicateProfileWithNewFingerprint } from '../components/profiles/profile-duplicate';
 import { getGroupLabel } from '../components/profiles/profile-groups';
+
+const tagModeLabels: Record<BatchTagMode, string> = {
+  append: '批量追加标签',
+  remove: '批量移除标签',
+  replace: '批量覆盖标签'
+};
+
+/** 按模式算出单个环境的新标签集合。 */
+function getNextTags(current: readonly string[], tags: readonly string[], mode: BatchTagMode): readonly string[] {
+  if (mode === 'remove') {
+    return current.filter((tag) => !tags.includes(tag));
+  }
+  if (mode === 'replace') {
+    return tags;
+  }
+
+  return Array.from(new Set([...current, ...tags]));
+}
 
 /** 批量操作类型，与批量工具栏按钮一一对应。 */
 export type BatchAction = 'launch' | 'close' | 'delete' | 'tag' | 'group' | 'duplicate';
@@ -25,7 +44,7 @@ interface ProfileBatchState {
   readonly dialog: BatchDialogKind | undefined;
   readonly closeDialog: () => void;
   readonly runAction: (action: BatchAction) => Promise<void>;
-  readonly applyTags: (tags: readonly string[]) => Promise<void>;
+  readonly applyTags: (tags: readonly string[], mode: BatchTagMode) => Promise<void>;
   readonly applyGroup: (groupId: string | undefined) => Promise<void>;
 }
 
@@ -95,14 +114,14 @@ export function useProfileBatch({
     await runSerial((id) => duplicateProfileWithNewFingerprint(id), '批量复制');
   }
 
-  async function applyTags(tags: readonly string[]): Promise<void> {
+  async function applyTags(tags: readonly string[], mode: BatchTagMode): Promise<void> {
     setDialog(undefined);
     await runSerial(async (profileId) => {
       const detail = await window.browserShell.getProfile(profileId);
       await window.browserShell.updateProfile(profileId, toProfileDraft(detail, {
-        tags: Array.from(new Set([...detail.tags, ...tags]))
+        tags: getNextTags(detail.tags, tags, mode)
       }));
-    }, '批量添加标签');
+    }, tagModeLabels[mode]);
   }
 
   async function applyGroup(groupId: string | undefined): Promise<void> {
