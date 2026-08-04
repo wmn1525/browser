@@ -33,6 +33,7 @@ import { useAppUpdates } from './hooks/use-app-updates';
 import { useBrowserKernels } from './hooks/use-browser-kernels';
 import { useProfileBatch } from './hooks/use-profile-batch';
 import { useProfileDuplicate } from './hooks/use-profile-duplicate';
+import { useProfileListPosition } from './hooks/use-profile-list-position';
 import { useProfilePagination } from './hooks/use-profile-pagination';
 
 /** React renderer 根组件，管理 Electron preload 暴露的数据流。 */
@@ -61,6 +62,7 @@ export function App(): JSX.Element {
   const pagination = useProfilePagination(filteredProfiles, `${activeGroupId}|${keyword}|${selectedTags.join(',')}`);
   const batch = useProfileBatch({ deleteProfiles, groups, refreshProfiles, selectedIds, setStatus });
   const duplicate = useProfileDuplicate({ profiles, refreshProfiles, setStatus });
+  const listPosition = useProfileListPosition();
   // 只统计已选中的运行态环境，批量启动/关闭按钮据此禁用
   const runningSelectedCount = profiles.filter((profile) => selectedIds.includes(profile.id) && profile.isRunning).length;
 
@@ -109,6 +111,7 @@ export function App(): JSX.Element {
     setStatus(editingProfile ? '正在保存 profile...' : '正在创建 profile...');
     if (editingProfile) {
       await window.browserShell.updateProfile(editingProfile.id, draft);
+      listPosition.markEdited(editingProfile.id);
     } else {
       await window.browserShell.createProfile(draft);
     }
@@ -348,8 +351,11 @@ export function App(): JSX.Element {
                     totalCount={filteredProfiles.length}
                   />
                   <ProfileTable
+                    getScrollTop={listPosition.getScrollTop}
                     groups={groups}
+                    highlightProfileId={listPosition.highlightId}
                     onCommand={(command, profileId) => void handleProfileCommand(command, profileId)}
+                    onScrollChange={listPosition.saveScrollTop}
                     onSelectedIdsChange={setSelectedIds}
                     profiles={pagination.pagedProfiles}
                     selectedIds={selectedIds}
