@@ -83,6 +83,15 @@ export function registerBrowserIpc(): void {
   ipcMain.handle('profiles:delete', (_event, profileId: string) =>
     browserEngine.deleteProfile(profileId)
   );
+  ipcMain.handle('profiles:list-deleted', () => browserEngine.listDeletedProfiles());
+  ipcMain.handle('profiles:restore', (_event, profileId: string) =>
+    browserEngine.restoreProfile(profileId)
+  );
+  ipcMain.handle('profiles:purge', (_event, profileId: string) =>
+    browserEngine.purgeProfile(profileId)
+  );
+  ipcMain.handle('profiles:orphan-scan', () => browserEngine.scanOrphanData());
+  ipcMain.handle('profiles:orphan-purge', () => browserEngine.purgeOrphanData());
 
   ipcMain.handle('network:get-public-ip', async (): Promise<PublicIpInfo> => {
     const response = await fetch('https://ipwho.is/');

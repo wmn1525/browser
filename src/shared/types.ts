@@ -165,6 +165,14 @@ export interface ProfileSummary {
   readonly tags: readonly string[];
   readonly isRunning: boolean;
   readonly lastLaunchedAt?: number;
+  /** 有值表示环境在回收站里，主列表不会返回带此字段的环境。 */
+  readonly deletedAt?: number;
+}
+
+/** 无主浏览器数据的扫描与回收结果。 */
+export interface OrphanDataReport {
+  readonly count: number;
+  readonly totalBytes: number;
 }
 
 /** Profile 编辑弹窗需要的完整详情。 */
@@ -320,6 +328,11 @@ export interface BrowserShellApi {
   readonly launchProfile: (idOrName: string) => Promise<LaunchResult>;
   readonly closeProfile: (profileId: string) => Promise<void>;
   readonly deleteProfile: (profileId: string) => Promise<void>;
+  readonly listDeletedProfiles: () => Promise<readonly ProfileSummary[]>;
+  readonly restoreProfile: (profileId: string) => Promise<void>;
+  readonly purgeProfile: (profileId: string) => Promise<void>;
+  readonly scanOrphanData: () => Promise<OrphanDataReport>;
+  readonly purgeOrphanData: () => Promise<OrphanDataReport>;
   readonly minimizeWindow: () => Promise<void>;
   readonly toggleMaximizeWindow: () => Promise<void>;
   readonly closeWindow: () => Promise<void>;

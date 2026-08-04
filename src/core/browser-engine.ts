@@ -6,6 +6,7 @@ import type {
   BrowserKernelInfo,
   LaunchResult,
   ManagedExtension,
+  OrphanDataReport,
   ProfileDetail,
   ProfileDraft,
   ProfileSummary
@@ -17,7 +18,12 @@ import { ChromiumBrowserMonitor } from './chromium-browser-monitor';
 import { injectChromiumFingerprintPatch } from './chromium-fingerprint-runtime';
 import { getEnabledExtensionPaths } from './extension-launch-paths';
 import { FirefoxProfileLauncher } from './firefox-profile-launcher';
-import { getChromiumProfileDataPath, releaseChromiumProfileData, renewChromiumProfileData } from './profile-data-cleaner';
+import { getChromiumProfileDataPath, renewChromiumProfileData } from './profile-data-cleaner';
+import { removeDisabledExtensionIdFromProfiles } from './profile-extension-cleaner';
+import { purgeOrphanProfileData, scanOrphanProfileData } from './profile-orphan-cleaner';
+import { purgeProfileBrowserData } from './profile-purge';
+import { isProfileDeleted, listAllProfileIds, markProfileDeleted } from './profile-recycle-bin';
+import { toWindowSyncProfile } from './window-sync-profile-mapper';
 import {
   normalizeProfileDraft,
   toProfileDetail,
@@ -54,10 +60,19 @@ export class BrowserEngine {
     this.profiles = new BrowserProfiles();
   }
 
-  /** 返回所有 profile，并附带当前进程内的运行状态。 */
+  /** 返回所有未删除的 profile，并附带当前进程内的运行状态。 */
   public async listProfiles(): Promise<readonly ProfileSummary[]> {
     const profiles = await this.profiles.list();
-    return profiles.map((profile) => this.toSummary(profile));
+    return profiles.filter((profile) => !isProfileDeleted(profile)).map((profile) => this.toSummary(profile));
+  }
+
+  /** 返回回收站里的 profile，按删除时间倒序。 */
+  public async listDeletedProfiles(): Promise<readonly ProfileSummary[]> {
+    const profiles = await this.profiles.list();
+    return profiles
+      .filter((profile) => isProfileDeleted(profile))
+      .map((profile) => this.toSummary(profile))
+      .sort((left, right) => (right.deletedAt ?? 0) - (left.deletedAt ?? 0));
   }
 
   /** 创建本地 profile，指纹字段通过 CDP 注入链路在启动后生效。 */
@@ -135,6 +150,11 @@ export class BrowserEngine {
       throw new Error(`Profile not found: ${profileId}`);
     }
 
+    // 核心库的 duplicate 是 create({...existing})，会把 deletedAt 一起克隆，副本会一出生就在回收站里
+    if (isProfileDeleted(profile)) {
+      await markProfileDeleted(this.profiles, profile.id, undefined);
+    }
+
     this.notifyChanged();
     return this.toSummary(profile);
   }
@@ -154,6 +174,11 @@ export class BrowserEngine {
     const profile = await this.profiles.getByIdOrName(idOrName);
     if (!profile) {
       throw new Error(`Profile not found: ${idOrName}`);
+    }
+
+    // getByIdOrName 走核心库自己的 list，不受 listProfiles 过滤影响，必须单独挡住回收站里的环境
+    if (isProfileDeleted(profile)) {
+      throw new Error(`Profile is in recycle bin: ${idOrName}`);
     }
 
     const extendedProfile: ExtendedStoredProfile = profile;
@@ -210,21 +235,10 @@ export class BrowserEngine {
   /** 返回窗口同步页需要的运行窗口和 CDP 调试信息。 */
   public async listWindowSyncProfiles(): Promise<readonly WindowSyncProfile[]> {
     const profiles = await this.profiles.list();
-    return profiles.map((profile) => {
-      const summary = this.toSummary(profile);
-      const launch = this.runningLaunches.get(profile.id);
-      const debugPort = launch?.debugPort ?? launch?.port;
-      return {
-        id: summary.id,
-        name: summary.name,
-        groupId: summary.groupId,
-        isRunning: summary.isRunning,
-        syncSupported: summary.isRunning && Boolean(debugPort),
-        debugPort,
-        debugUrl: launch?.debugUrl,
-        wsEndpoint: launch?.wsEndpoint
-      };
-    });
+    // 这条遍历独立于 listProfiles，不在这里过滤回收站环境就会漏到窗口同步页
+    return profiles
+      .filter((profile) => !isProfileDeleted(profile))
+      .map((profile) => toWindowSyncProfile(this.toSummary(profile), this.runningLaunches.get(profile.id)));
   }
 
   /** 返回本机与可下载 Chrome for Testing 内核。 */
@@ -261,42 +275,47 @@ export class BrowserEngine {
     this.notifyChanged();
   }
 
-  /** 删除 profile 前先尝试关闭，避免残留浏览器进程继续占用用户数据目录。 */
+  /** 删除 profile：只移入回收站并关闭运行实例，磁盘数据一律保留，等彻底删除再清。 */
   public async deleteProfile(profileId: string): Promise<void> {
     if (this.runningProfiles.has(profileId)) {
       await this.closeProfile(profileId);
     }
 
-    try {
-      await this.profiles.delete(profileId);
-    } catch (error) {
-      // Windows 上残留 Chromium 进程会占用 user-data-dir 让核心库 rmSync 失败；
-      // 进程扫描代价高（PowerShell 查询），只在真正删除失败时才执行，避免拖慢批量删除
-      console.warn(`[profiles:delete] 用户数据目录被占用，结束残留进程后重试: ${profileId}`, error);
-      const existing: ExtendedStoredProfile | null = await this.profiles.get(profileId);
-      await releaseChromiumProfileData(profileId, existing?.chromiumDataDir);
-      await this.profiles.delete(profileId);
-    }
-
+    await markProfileDeleted(this.profiles, profileId, Date.now());
     this.notifyChanged();
   }
 
+  /** 从回收站恢复：清掉标记即可，数据从未被动过。 */
+  public async restoreProfile(profileId: string): Promise<void> {
+    await markProfileDeleted(this.profiles, profileId, undefined);
+    this.notifyChanged();
+  }
+
+  /** 彻底删除：先清空浏览器数据，再让核心库删掉 config.json，失败时环境仍留在回收站可重试。 */
+  public async purgeProfile(profileId: string): Promise<void> {
+    if (this.runningProfiles.has(profileId)) {
+      await this.closeProfile(profileId);
+    }
+
+    await purgeProfileBrowserData(profileId);
+    await this.profiles.delete(profileId);
+    this.notifyChanged();
+  }
+
+  /** 扫描无主的浏览器数据目录，只统计不删除。 */
+  public async scanOrphanData(): Promise<OrphanDataReport> {
+    return scanOrphanProfileData(await listAllProfileIds(this.profiles));
+  }
+
+  /** 回收无主的浏览器数据目录。 */
+  public async purgeOrphanData(): Promise<OrphanDataReport> {
+    return purgeOrphanProfileData(await listAllProfileIds(this.profiles));
+  }
+
+
   /** 删除扩展后清理所有 profile 中残留的禁用扩展 id。 */
   public async removeDisabledExtensionId(extensionId: string): Promise<void> {
-    const profiles = await this.profiles.list();
-    for (const profile of profiles) {
-      const extendedProfile: ExtendedStoredProfile = profile;
-      const disabledIds = extendedProfile.disabledGlobalExtensionIds ?? [];
-      const nextIds = disabledIds.filter((id) => id !== extensionId);
-      if (nextIds.length === disabledIds.length) {
-        continue;
-      }
-
-      const updates: Partial<ExtendedProfileConfig> = {
-        disabledGlobalExtensionIds: nextIds
-      };
-      await this.profiles.update(profile.id, updates);
-    }
+    await removeDisabledExtensionIdFromProfiles(this.profiles, extensionId);
     this.notifyChanged();
   }
 

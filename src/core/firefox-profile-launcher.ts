@@ -52,9 +52,18 @@ interface FirefoxProxySession {
   readonly anonymizedProxyUrl?: string;
 }
 
+/**
+ * Firefox profile 存储根目录。
+ * 注意它和 Chromium 数据不在同一个根下，核心库删 profile 时够不到这里，
+ * 所以彻底删除必须单独清理，孤儿扫描也要单独遍历。
+ */
+export function getFirefoxProfilesRoot(): string {
+  return join(homedir(), '.imrun-browser', 'firefox-profiles');
+}
+
 /** 管理真实 Firefox/Gecko 子进程与独立 profile 目录。 */
 export class FirefoxProfileLauncher {
-  private readonly root = join(homedir(), '.imrun-browser', 'firefox-profiles');
+  private readonly root = getFirefoxProfilesRoot();
   private readonly sessions = new Map<string, FirefoxRunningSession>();
 
   /** 启动 Firefox 并在进程退出时通知调用方清理运行态。 */

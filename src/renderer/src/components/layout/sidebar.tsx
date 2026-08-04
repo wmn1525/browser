@@ -1,5 +1,5 @@
 import { Button } from 'antd';
-import { AppWindow, Bolt, CloudCog, Folder, Globe2, Grid2X2, Plus, Settings, Users, type LucideIcon } from 'lucide-react';
+import { AppWindow, Bolt, CloudCog, Folder, Globe2, Grid2X2, Plus, Settings, Trash2, Users, type LucideIcon } from 'lucide-react';
 
 import { isAutomationModule, type ModuleKey } from '../feature/feature-page';
 
@@ -32,6 +32,7 @@ const navItems: readonly NavItem[] = [
   { key: 'proxies', label: '代理管理', icon: Globe2 },
   { key: 'apps', label: '应用中心', icon: AppWindow },
   { key: 'automation-api-mcp', label: '自动化', icon: Bolt, children: automationChildren },
+  { key: 'recycle-bin', label: '回收站', icon: Trash2 },
   { key: 'settings', label: '设置中心', icon: Settings },
   { key: 'team', label: '团队', icon: Users }
 ] as const;

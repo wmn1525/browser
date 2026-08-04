@@ -22,6 +22,16 @@ export function getChromiumProfileDataPath(profileId: string, dataDirName: strin
   return getSafeChildPath(chromiumProfilesRoot, profileId, dataDirName ?? defaultChromiumDataDir);
 }
 
+/** 单个 profile 在核心库存储里的根目录，彻底删除与孤儿扫描都要用。 */
+export function getChromiumProfileRoot(profileId: string): string {
+  return getSafeChildPath(chromiumProfilesRoot, profileId);
+}
+
+/** 核心库 profile 存储根目录，仅供孤儿扫描遍历。 */
+export function getChromiumProfilesRoot(): string {
+  return chromiumProfilesRoot;
+}
+
 /** 生成新的 Chromium user data 目录，旧目录后台清理，避免旧日志锁阻塞下次启动。 */
 export async function renewChromiumProfileData(profileId: string, oldDataDirName: string | undefined): Promise<string> {
   const profileRoot = getSafeChildPath(chromiumProfilesRoot, profileId);

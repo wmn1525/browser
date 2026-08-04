@@ -190,7 +190,7 @@ export function App(): JSX.Element {
       return;
     }
 
-    if (!await confirmDelete(`确认删除 ${profileIds.length} 个环境？`, '删除后会移除本地环境配置和对应浏览器用户数据。')) {
+    if (!await confirmDelete(`确认删除 ${profileIds.length} 个环境？`, '环境会移入回收站，浏览器数据仍保留在本地，可随时恢复。')) {
       return;
     }
 

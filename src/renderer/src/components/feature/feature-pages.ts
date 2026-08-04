@@ -113,6 +113,13 @@ export const featurePages: readonly FeaturePageConfig[] = [
     cards: []
   },
   {
+    key: 'recycle-bin',
+    title: '回收站',
+    summary: '存放已删除的环境，可恢复或彻底删除；彻底删除会清空对应的本地浏览器数据。',
+    docRefs: ['Local Storage'],
+    cards: []
+  },
+  {
     key: 'settings',
     title: '设置中心',
     summary: '集中管理本机应用设置，当前先暴露数据文件夹定位与手动迁移后的目录切换。',
