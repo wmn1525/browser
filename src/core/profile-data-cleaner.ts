@@ -36,6 +36,11 @@ export async function renewChromiumProfileData(profileId: string, oldDataDirName
   return nextDataDirName;
 }
 
+/** 删除 profile 前释放 user data 目录占用：Windows 上句柄未释放会让核心库的 rmSync 抛 EBUSY/EPERM。 */
+export async function releaseChromiumProfileData(profileId: string, dataDirName: string | undefined): Promise<void> {
+  await killChromiumProfileProcesses(getChromiumProfileDataPath(profileId, dataDirName));
+}
+
 /** 删除历史数据目录只是后台卫生任务，失败不能影响新目录启动。 */
 async function cleanupOldProfileData(profileRoot: string, activeDataDirName: string): Promise<void> {
   const entries = await readdir(profileRoot, { withFileTypes: true });

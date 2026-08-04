@@ -1,4 +1,4 @@
-import type { ProfileDetail, ProfileDraft, ProfileGroup, ProfileSummary } from '../../shared/types';
+import type { ProfileDetail, ProfileDraft, ProfileSummary } from '../../shared/types';
 import { filterProfilesByGroup } from './components/profiles/profile-groups';
 
 /** 按当前分组、关键字和标签过滤 profile 列表。 */
@@ -53,28 +53,6 @@ export function toProfileDraft(detail: ProfileDetail, overrides: Partial<Profile
 export function normalizeGroupName(value: string | null): string | undefined {
   const normalized = value?.trim();
   return normalized && normalized.length > 0 ? normalized : undefined;
-}
-
-export function getBatchGroupPrompt(groups: readonly ProfileGroup[]): string {
-  const names = groups.map((group) => group.name).join('、') || '暂无分组';
-  return `请输入目标分组名称，输入“未分组”可移出分组。\n可选分组：${names}`;
-}
-
-/** 解析批量分组输入，避免把不存在的分组名写入 profile。 */
-export function resolvePromptGroupId(value: string | null, groups: readonly ProfileGroup[]): {
-  readonly cancelled: boolean;
-  readonly groupId?: string;
-} {
-  const name = normalizeGroupName(value);
-  if (!name) {
-    return { cancelled: true };
-  }
-  if (name === '未分组') {
-    return { cancelled: false, groupId: undefined };
-  }
-
-  const group = groups.find((item) => item.name === name);
-  return group ? { cancelled: false, groupId: group.id } : { cancelled: true };
 }
 
 export function getErrorMessage(error: unknown): string {

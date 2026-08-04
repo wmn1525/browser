@@ -52,8 +52,9 @@ export function ProfileTable({
               <Th>
                 <Checkbox
                   checked={allSelected}
+                  indeterminate={!allSelected && profiles.some((profile) => selectedIds.includes(profile.id))}
                   onChange={(event) => {
-                    onSelectedIdsChange(event.target.checked ? profiles.map((profile) => profile.id) : []);
+                    onSelectedIdsChange(togglePageSelected(selectedIds, profiles, event.target.checked));
                   }}
                 />
               </Th>
@@ -197,6 +198,20 @@ function Th({ children, className }: PropsWithChildren<{ readonly className?: st
 
 function Td({ children, className }: PropsWithChildren<{ readonly className?: string }>): JSX.Element {
   return <td className={['overflow-hidden border-b px-3 py-3 align-middle', className].filter(Boolean).join(' ')}>{children}</td>;
+}
+
+/** 表头勾选只影响当前页，避免分页后误清空其它页已选中的环境。 */
+function togglePageSelected(
+  selectedIds: readonly string[],
+  profiles: readonly ProfileSummary[],
+  checked: boolean
+): readonly string[] {
+  const pageIds = profiles.map((profile) => profile.id);
+  if (checked) {
+    return Array.from(new Set([...selectedIds, ...pageIds]));
+  }
+
+  return selectedIds.filter((id) => !pageIds.includes(id));
 }
 
 function toggleSelected(selectedIds: readonly string[], profileId: string, checked: boolean): readonly string[] {

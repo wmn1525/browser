@@ -17,7 +17,7 @@ import { ChromiumBrowserMonitor } from './chromium-browser-monitor';
 import { injectChromiumFingerprintPatch } from './chromium-fingerprint-runtime';
 import { getEnabledExtensionPaths } from './extension-launch-paths';
 import { FirefoxProfileLauncher } from './firefox-profile-launcher';
-import { getChromiumProfileDataPath, renewChromiumProfileData } from './profile-data-cleaner';
+import { getChromiumProfileDataPath, releaseChromiumProfileData, renewChromiumProfileData } from './profile-data-cleaner';
 import {
   normalizeProfileDraft,
   toProfileDetail,
@@ -267,7 +267,17 @@ export class BrowserEngine {
       await this.closeProfile(profileId);
     }
 
-    await this.profiles.delete(profileId);
+    try {
+      await this.profiles.delete(profileId);
+    } catch (error) {
+      // Windows 上残留 Chromium 进程会占用 user-data-dir 让核心库 rmSync 失败；
+      // 进程扫描代价高（PowerShell 查询），只在真正删除失败时才执行，避免拖慢批量删除
+      console.warn(`[profiles:delete] 用户数据目录被占用，结束残留进程后重试: ${profileId}`, error);
+      const existing: ExtendedStoredProfile | null = await this.profiles.get(profileId);
+      await releaseChromiumProfileData(profileId, existing?.chromiumDataDir);
+      await this.profiles.delete(profileId);
+    }
+
     this.notifyChanged();
   }
 

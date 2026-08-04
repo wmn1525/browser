@@ -6,14 +6,11 @@ import type { ProfileDetail, ProfileDraft, ProfileGroup, ProfileSummary } from '
 import { confirmDelete } from './antd-confirm';
 import { FeatureDialog, type FeaturePanel, PreviewDialog } from './app-dialogs';
 import {
-  getBatchGroupPrompt,
   getErrorMessage,
   getTopbarDescription,
   getTopbarItems,
   getVisibleProfiles,
-  normalizeGroupName,
-  resolvePromptGroupId,
-  toProfileDraft
+  normalizeGroupName
 } from './app-helpers';
 import { AppUpdateDialog } from './components/layout/app-update-dialog';
 import { Pagination } from './components/layout/pagination';
@@ -23,6 +20,7 @@ import { WindowTitlebar } from './components/layout/window-titlebar';
 import type { ModuleKey } from './components/feature/feature-page';
 import { FeaturePage } from './components/feature/feature-page';
 import { getFeaturePage } from './components/feature/feature-pages';
+import { BatchGroupDialog, BatchTagDialog } from './components/profiles/batch-dialogs';
 import { BatchToolbar } from './components/profiles/batch-toolbar';
 import { Filterbar } from './components/profiles/filterbar';
 import { ProfileFormPage } from './components/profiles/profile-form-page';
@@ -31,6 +29,8 @@ import { canDeleteGroup, createLocalGroup, getGroupLabel } from './components/pr
 import { buildRenewProfileDraft } from './components/profiles/profile-renew-draft';
 import { useAppUpdates } from './hooks/use-app-updates';
 import { useBrowserKernels } from './hooks/use-browser-kernels';
+import { useProfileBatch } from './hooks/use-profile-batch';
+import { useProfilePagination } from './hooks/use-profile-pagination';
 
 /** React renderer 根组件，管理 Electron preload 暴露的数据流。 */
 export function App(): JSX.Element {
@@ -51,12 +51,22 @@ export function App(): JSX.Element {
   const [activeModule, setActiveModule] = useState<ModuleKey>('profiles');
   const kernelState = useBrowserKernels(setStatus);
   const appUpdates = useAppUpdates(setStatus);
+  const filteredProfiles = getVisibleProfiles(profiles, activeGroupId, keyword, tagKeyword);
+  const pagination = useProfilePagination(filteredProfiles, `${activeGroupId}|${keyword}|${tagKeyword}`);
+  const batch = useProfileBatch({ deleteProfiles, groups, refreshProfiles, selectedIds, setStatus });
+  // 只统计已选中的运行态环境，批量启动/关闭按钮据此禁用
+  const runningSelectedCount = profiles.filter((profile) => selectedIds.includes(profile.id) && profile.isRunning).length;
 
-  async function refreshProfiles(): Promise<void> {
-    setStatus('正在读取 profiles...');
+  /** 只重新拉取列表，不改状态栏；主进程推送的刷新用它，避免覆盖批量操作的结果文案。 */
+  async function reloadProfiles(): Promise<void> {
     const nextProfiles = await window.browserShell.listProfiles();
     setProfiles(nextProfiles);
     setSelectedIds((ids) => ids.filter((id) => nextProfiles.some((profile) => profile.id === id)));
+  }
+
+  async function refreshProfiles(): Promise<void> {
+    setStatus('正在读取 profiles...');
+    await reloadProfiles();
     setStatus('准备就绪');
   }
 
@@ -80,7 +90,7 @@ export function App(): JSX.Element {
     void refreshPublicIp();
     const timer = window.setInterval(() => setTimeTick((tick) => tick + 1), 60_000);
     const unsubscribe = window.browserShell.onProfilesChanged(() => {
-      void refreshProfiles();
+      void reloadProfiles();
     });
     return () => {
       window.clearInterval(timer);
@@ -175,10 +185,27 @@ export function App(): JSX.Element {
       return;
     }
 
-    for (const profileId of profileIds) {
-      await window.browserShell.deleteProfile(profileId);
+    // 逐个删除并收集失败项：某个环境的用户数据目录被占用时，不能让整批删除在第一条就中断
+    const failures: { readonly profileId: string; readonly message: string }[] = [];
+    for (const [index, profileId] of profileIds.entries()) {
+      setStatus(`正在删除 (${index + 1}/${profileIds.length})`);
+      try {
+        await window.browserShell.deleteProfile(profileId);
+      } catch (error) {
+        failures.push({ profileId, message: getErrorMessage(error) });
+      }
     }
-    setSelectedIds([]);
+
+    // 失败项保留勾选，便于用户手动关闭浏览器后直接重试
+    setSelectedIds(failures.map((failure) => failure.profileId));
+    await refreshProfiles();
+    if (failures.length > 0) {
+      const summary = `已删除 ${profileIds.length - failures.length}/${profileIds.length} 个环境，失败 ${failures.length} 个: ${failures[0]!.message}`;
+      setStatus(summary);
+      void antdMessage.error(summary);
+      return;
+    }
+
     setStatus(`已删除 ${profileIds.length} 个环境`);
   }
 
@@ -249,65 +276,11 @@ export function App(): JSX.Element {
     setStatus(`已筛选分组: ${groupId === 'ungrouped' ? '未分组' : getGroupLabel(groups, groupId)}`);
   }
 
-  async function handleBatchAction(action: 'launch' | 'close' | 'delete' | 'tag' | 'group' | 'duplicate'): Promise<void> {
-    if (selectedIds.length === 0) {
-      setStatus('请先勾选环境');
-      return;
-    }
-
-    if (action === 'delete') await deleteProfiles(selectedIds);
-    if (action === 'launch') await runBatch((id) => window.browserShell.launchProfile(id), '批量启动完成');
-    if (action === 'close') await runBatch((id) => window.browserShell.closeProfile(id), '批量关闭完成');
-    if (action === 'duplicate') await runBatch((id) => window.browserShell.duplicateProfile(id), '批量复制完成');
-    if (action === 'tag') await applyBatchTags();
-    if (action === 'group') await applyBatchGroup();
-    await refreshProfiles();
-  }
-
-  async function runBatch(task: (profileId: string) => Promise<unknown>, done: string): Promise<void> {
-    for (const profileId of selectedIds) {
-      await task(profileId);
-    }
-    setStatus(`${done}: ${selectedIds.length} 个环境`);
-  }
-
-  async function applyBatchTags(): Promise<void> {
-    const value = window.prompt('请输入批量标签，多个标签用逗号分隔');
-    const tags = value?.split(',').map((tag) => tag.trim()).filter(Boolean) ?? [];
-    if (tags.length === 0) {
-      setStatus('已取消批量标签');
-      return;
-    }
-
-    for (const profileId of selectedIds) {
-      const detail = await window.browserShell.getProfile(profileId);
-      await window.browserShell.updateProfile(profileId, toProfileDraft(detail, {
-        tags: Array.from(new Set([...detail.tags, ...tags]))
-      }));
-    }
-    setStatus(`已为 ${selectedIds.length} 个环境添加标签`);
-  }
-
-  async function applyBatchGroup(): Promise<void> {
-    const target = resolvePromptGroupId(window.prompt(getBatchGroupPrompt(groups)), groups);
-    if (target.cancelled) {
-      setStatus('已取消批量分组');
-      return;
-    }
-
-    for (const profileId of selectedIds) {
-      const detail = await window.browserShell.getProfile(profileId);
-      await window.browserShell.updateProfile(profileId, toProfileDraft(detail, { groupId: target.groupId }));
-    }
-    setStatus(`已移动 ${selectedIds.length} 个环境到 ${getGroupLabel(groups, target.groupId)}`);
-  }
-
   function openFeaturePanel(title: string, description: string, items: readonly string[]): void {
     setFeaturePanel({ title, description, items });
     setStatus(title);
   }
 
-  const filteredProfiles = getVisibleProfiles(profiles, activeGroupId, keyword, tagKeyword);
   const activeFeaturePage = activeModule === 'profiles' ? undefined : getFeaturePage(activeModule);
   const pageTitle = formMode ? (formMode === 'edit' ? '编辑浏览器' : '新建浏览器') : (activeFeaturePage?.title ?? '环境管理');
 
@@ -354,16 +327,23 @@ export function App(): JSX.Element {
                   tagKeyword={tagKeyword}
                 />
                 <section className="flex min-h-0 flex-1 flex-col overflow-hidden p-6">
-                  <BatchToolbar onAction={(action) => void handleBatchAction(action)} selectedCount={selectedIds.length} />
+                  <BatchToolbar
+                    onAction={(action) => void batch.runAction(action)}
+                    onClearSelection={() => setSelectedIds([])}
+                    onSelectAll={() => setSelectedIds(filteredProfiles.map((profile) => profile.id))}
+                    runningCount={runningSelectedCount}
+                    selectedCount={selectedIds.length}
+                    totalCount={filteredProfiles.length}
+                  />
                   <ProfileTable
                     groups={groups}
                     onCommand={(command, profileId) => void handleProfileCommand(command, profileId)}
                     onSelectedIdsChange={setSelectedIds}
-                    profiles={filteredProfiles}
+                    profiles={pagination.pagedProfiles}
                     selectedIds={selectedIds}
                   />
                 </section>
-                <Pagination count={filteredProfiles.length} status={status} />
+                <Pagination count={filteredProfiles.length} onChange={pagination.change} page={pagination.page} pageSize={pagination.pageSize} status={status} />
               </>
             ) : (
               <FeaturePage
@@ -387,6 +367,8 @@ export function App(): JSX.Element {
             </footer>
           </main>
         </div>
+        <BatchTagDialog onCancel={batch.closeDialog} onSubmit={(tags) => void batch.applyTags(tags)} open={batch.dialog === 'tag'} />
+        <BatchGroupDialog groups={groups} onCancel={batch.closeDialog} onSubmit={(groupId) => void batch.applyGroup(groupId)} open={batch.dialog === 'group'} />
         <PreviewDialog onOpenChange={() => setPreviewText('')} text={previewText} title={previewTitle} />
         <FeatureDialog onClose={() => setFeaturePanel(undefined)} panel={featurePanel} />
         <AppUpdateDialog event={appUpdates.event} onDownload={() => void appUpdates.downloadUpdate()} onInstall={() => void appUpdates.installUpdate()} onOpenChange={appUpdates.setOpen} onSkip={appUpdates.skipVersion} open={appUpdates.open} />
