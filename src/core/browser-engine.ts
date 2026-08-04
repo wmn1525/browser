@@ -285,20 +285,26 @@ export class BrowserEngine {
     this.notifyChanged();
   }
 
-  /** 从回收站恢复：清掉标记即可，数据从未被动过。 */
-  public async restoreProfile(profileId: string): Promise<void> {
-    await markProfileDeleted(this.profiles, profileId, undefined);
+  /** 从回收站恢复：清掉标记即可，数据从未被动过。整批只广播一次，避免逐条刷新拖慢界面。 */
+  public async restoreProfiles(profileIds: readonly string[]): Promise<void> {
+    for (const profileId of profileIds) {
+      await markProfileDeleted(this.profiles, profileId, undefined);
+    }
+
     this.notifyChanged();
   }
 
   /** 彻底删除：先清空浏览器数据，再让核心库删掉 config.json，失败时环境仍留在回收站可重试。 */
-  public async purgeProfile(profileId: string): Promise<void> {
-    if (this.runningProfiles.has(profileId)) {
-      await this.closeProfile(profileId);
+  public async purgeProfiles(profileIds: readonly string[]): Promise<void> {
+    for (const profileId of profileIds) {
+      if (this.runningProfiles.has(profileId)) {
+        await this.closeProfile(profileId);
+      }
+
+      await purgeProfileBrowserData(profileId);
+      await this.profiles.delete(profileId);
     }
 
-    await purgeProfileBrowserData(profileId);
-    await this.profiles.delete(profileId);
     this.notifyChanged();
   }
 

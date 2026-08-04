@@ -27,7 +27,6 @@ import { Filterbar } from './components/profiles/filterbar';
 import { ProfileFormPage } from './components/profiles/profile-form-page';
 import { ProfileTable, type ProfileCommand } from './components/profiles/profile-table';
 import { canDeleteGroup, createLocalGroup, getGroupLabel } from './components/profiles/profile-groups';
-import { duplicateProfileWithNewFingerprint } from './components/profiles/profile-duplicate';
 import { ProfileDuplicateDialog } from './components/profiles/profile-duplicate-dialog';
 import { buildRenewProfileDraft } from './components/profiles/profile-renew-draft';
 import { useAppUpdates } from './hooks/use-app-updates';
@@ -124,13 +123,14 @@ export function App(): JSX.Element {
     if (command === 'launch') await runProfileTask(profileId, () => window.browserShell.launchProfile(profileId), '已启动');
     if (command === 'close') await runProfileTask(profileId, () => window.browserShell.closeProfile(profileId), '已关闭');
     if (command === 'delete') await deleteProfiles([profileId]);
-    if (command === 'duplicate') await runProfileTask(profileId, () => duplicateProfileWithNewFingerprint(profileId), '已复制');
-    if (command === 'duplicate-many') duplicate.request(profileId);
+    if (command === 'duplicate') await duplicate.duplicateOnce(profileId);
+    if (command === 'duplicate-many') duplicate.request([profileId]);
     if (command === 'renew') await renewProfile(profileId);
     if (command === 'export') await exportProfile(profileId);
     if (command === 'edit') await openEditProfile(profileId);
     if (command === 'detail') await openDetail(profileId);
-    await refreshProfiles();
+    // 用 reloadProfiles 而不是 refreshProfiles：后者会把状态改成「准备就绪」，盖掉各命令刚写入的结果提示
+    await reloadProfiles();
   }
 
   async function runProfileTask(profileId: string, task: () => Promise<unknown>, done: string): Promise<void> {
@@ -341,6 +341,7 @@ export function App(): JSX.Element {
                   <BatchToolbar
                     onAction={(action) => void batch.runAction(action)}
                     onClearSelection={() => setSelectedIds([])}
+                    onDuplicateMany={() => duplicate.request(selectedIds)}
                     onSelectAll={() => setSelectedIds(filteredProfiles.map((profile) => profile.id))}
                     runningCount={runningSelectedCount}
                     selectedCount={selectedIds.length}
@@ -380,7 +381,7 @@ export function App(): JSX.Element {
         </div>
         <BatchTagDialog onCancel={batch.closeDialog} onSubmit={(tags, mode) => void batch.applyTags(tags, mode)} open={batch.dialog === 'tag'} selectedTagOptions={selectedTagOptions} tagOptions={tagOptions} />
         <BatchGroupDialog groups={groups} onCancel={batch.closeDialog} onSubmit={(groupId) => void batch.applyGroup(groupId)} open={batch.dialog === 'group'} />
-        <ProfileDuplicateDialog onCancel={duplicate.close} onSubmit={(names) => void duplicate.run(names)} open={duplicate.open} profileName={duplicate.targetName} usedNames={duplicate.usedNames} />
+        <ProfileDuplicateDialog onCancel={duplicate.close} onSubmit={(count) => void duplicate.run(count)} open={duplicate.open} profileNames={duplicate.targetNames} usedNames={duplicate.usedNames} />
         <PreviewDialog onOpenChange={() => setPreviewText('')} text={previewText} title={previewTitle} />
         <FeatureDialog onClose={() => setFeaturePanel(undefined)} panel={featurePanel} />
         <AppUpdateDialog event={appUpdates.event} onDownload={() => void appUpdates.downloadUpdate()} onInstall={() => void appUpdates.installUpdate()} onOpenChange={appUpdates.setOpen} onSkip={appUpdates.skipVersion} open={appUpdates.open} />

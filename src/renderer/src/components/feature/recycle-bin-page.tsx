@@ -1,21 +1,25 @@
 import { Button, Empty, message as antdMessage } from 'antd';
-import { HardDrive, Trash2 } from 'lucide-react';
+import { HardDrive, ListChecks, RotateCcw, Trash2, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
-import type { OrphanDataReport, ProfileSummary } from '../../../../shared/types';
+import type { ProfileSummary } from '../../../../shared/types';
 import { confirmDelete } from '../../antd-confirm';
 import { getErrorMessage } from '../../app-helpers';
+import { RecycleBinOrphanDialog } from './recycle-bin-orphan-dialog';
 import { RecycleBinTable } from './recycle-bin-table';
 
-/** 回收站：已删除的环境只能恢复或彻底删除，不提供其它操作。 */
+/** 回收站：已删除的环境只能恢复或彻底删除，支持多选批量处理。 */
 export function RecycleBinPage(): JSX.Element {
   const [profiles, setProfiles] = useState<readonly ProfileSummary[]>([]);
-  const [orphan, setOrphan] = useState<OrphanDataReport>();
+  const [selectedIds, setSelectedIds] = useState<readonly string[]>([]);
   const [status, setStatus] = useState('正在读取回收站...');
-  const [busyId, setBusyId] = useState<string>();
+  const [busy, setBusy] = useState(false);
+  const [orphanOpen, setOrphanOpen] = useState(false);
 
   async function reload(): Promise<void> {
-    setProfiles(await window.browserShell.listDeletedProfiles());
+    const next = await window.browserShell.listDeletedProfiles();
+    setProfiles(next);
+    setSelectedIds((ids) => ids.filter((id) => next.some((profile) => profile.id === id)));
   }
 
   useEffect(() => {
@@ -27,121 +31,121 @@ export function RecycleBinPage(): JSX.Element {
     return unsubscribe;
   }, []);
 
-  async function runTask(profileId: string, task: () => Promise<void>, done: string): Promise<void> {
-    setBusyId(profileId);
+  /** 批量接口整批只广播一次，界面不会被逐条刷新拖住。 */
+  async function run(task: () => Promise<void>, running: string, done: string): Promise<void> {
+    setBusy(true);
+    setStatus(running);
     try {
       await task();
       await reload();
       setStatus(done);
     } catch (error) {
+      await reload();
       setStatus(`操作失败: ${getErrorMessage(error)}`);
       void antdMessage.error(getErrorMessage(error));
     } finally {
-      setBusyId(undefined);
+      setBusy(false);
     }
   }
 
-  async function restore(profile: ProfileSummary): Promise<void> {
-    await runTask(profile.id, () => window.browserShell.restoreProfile(profile.id), `已恢复: ${profile.name}`);
+  async function restore(profileIds: readonly string[]): Promise<void> {
+    await run(
+      () => window.browserShell.restoreProfiles(profileIds),
+      `正在恢复 ${profileIds.length} 个环境...`,
+      `已恢复 ${profileIds.length} 个环境`
+    );
   }
 
-  async function purge(profile: ProfileSummary): Promise<void> {
+  async function purge(profileIds: readonly string[], label: string): Promise<void> {
     const confirmed = await confirmDelete(
-      `确认彻底删除「${profile.name}」？`,
-      '会同时清空该环境的浏览器用户数据（登录态、Cookie、缓存），删除后无法恢复。'
+      `确认彻底删除${label}？`,
+      '会同时清空这些环境的浏览器用户数据（登录态、Cookie、缓存），删除后无法恢复。'
     );
     if (!confirmed) {
       return;
     }
 
-    await runTask(profile.id, () => window.browserShell.purgeProfile(profile.id), `已彻底删除: ${profile.name}`);
-  }
-
-  async function scanOrphan(): Promise<void> {
-    setStatus('正在扫描残留数据...');
-    try {
-      const report = await window.browserShell.scanOrphanData();
-      setOrphan(report);
-      setStatus(report.count === 0 ? '没有发现残留数据' : `发现 ${report.count} 处残留数据`);
-    } catch (error) {
-      setStatus(`扫描失败: ${getErrorMessage(error)}`);
-    }
-  }
-
-  async function purgeOrphan(): Promise<void> {
-    if (!await confirmDelete('确认清理全部残留数据？', '这些目录已不属于任何环境（含回收站），清理后无法恢复。')) {
-      return;
-    }
-
-    setStatus('正在清理残留数据...');
-    try {
-      const report = await window.browserShell.purgeOrphanData();
-      setOrphan({ count: 0, totalBytes: 0 });
-      setStatus(`已清理 ${report.count} 处残留数据，回收 ${formatBytes(report.totalBytes)}`);
-      void antdMessage.success(`已回收 ${formatBytes(report.totalBytes)}`);
-    } catch (error) {
-      setStatus(`清理失败: ${getErrorMessage(error)}`);
-    }
+    await run(
+      () => window.browserShell.purgeProfiles(profileIds),
+      `正在彻底删除 ${profileIds.length} 个环境...`,
+      `已彻底删除 ${profileIds.length} 个环境`
+    );
   }
 
   return (
-    <section className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-6">
-      <header>
+    <section className="flex min-h-0 flex-1 flex-col overflow-hidden p-6">
+      <header className="mb-3">
         <h2 className="text-lg font-semibold">回收站</h2>
         <p className="mt-1 text-sm text-muted-foreground">
           环境管理里删除的环境会先进入这里，数据仍保留在本地。回收站不会自动清空。
         </p>
       </header>
 
+      <Toolbar
+        busy={busy}
+        onClear={() => setSelectedIds([])}
+        onOpenOrphan={() => setOrphanOpen(true)}
+        onPurge={() => void purge(selectedIds, `选中的 ${selectedIds.length} 个环境`)}
+        onRestore={() => void restore(selectedIds)}
+        onSelectAll={() => setSelectedIds(profiles.map((profile) => profile.id))}
+        selectedCount={selectedIds.length}
+        totalCount={profiles.length}
+      />
+
       {profiles.length === 0 ? (
-        <Empty description="回收站是空的" />
+        <div className="flex flex-1 items-center justify-center rounded-lg border bg-card"><Empty description="回收站是空的" /></div>
       ) : (
-        <RecycleBinTable busyId={busyId} onPurge={(profile) => void purge(profile)} onRestore={(profile) => void restore(profile)} profiles={profiles} />
+        <RecycleBinTable
+          busy={busy}
+          onPurge={(profile) => void purge([profile.id], `「${profile.name}」`)}
+          onRestore={(profile) => void restore([profile.id])}
+          onSelectedIdsChange={setSelectedIds}
+          profiles={profiles}
+          selectedIds={selectedIds}
+        />
       )}
 
-      <OrphanPanel onPurge={() => void purgeOrphan()} onScan={() => void scanOrphan()} report={orphan} />
-      <footer className="text-xs text-muted-foreground">{status}</footer>
+      <footer className="mt-3 text-xs text-muted-foreground">{status}</footer>
+      <RecycleBinOrphanDialog onCancel={() => setOrphanOpen(false)} open={orphanOpen} />
     </section>
   );
 }
 
-/** 残留数据面板：处理历史遗留的无主目录，它们没有 config.json，回收站列不出来。 */
-function OrphanPanel({ onPurge, onScan, report }: {
+/** 批量工具栏；残留数据入口固定在右侧，与选择操作放在同一行。 */
+function Toolbar({ busy, onClear, onOpenOrphan, onPurge, onRestore, onSelectAll, selectedCount, totalCount }: {
+  readonly busy: boolean;
+  readonly onClear: () => void;
+  readonly onOpenOrphan: () => void;
   readonly onPurge: () => void;
-  readonly onScan: () => void;
-  readonly report: OrphanDataReport | undefined;
+  readonly onRestore: () => void;
+  readonly onSelectAll: () => void;
+  readonly selectedCount: number;
+  readonly totalCount: number;
 }): JSX.Element {
+  const hasSelection = selectedCount > 0;
+
   return (
-    <div className="rounded-lg border bg-card p-4">
-      <div className="flex items-center gap-2 text-sm font-medium"><HardDrive className="size-4" />残留数据</div>
-      <p className="mt-1 text-xs text-muted-foreground">
-        早期版本删除环境时可能留下无主的浏览器数据目录，它们不属于任何环境（含回收站），只能在这里回收。
-      </p>
-      <div className="mt-3 flex items-center gap-3">
-        <Button htmlType="button" onClick={onScan} size="small">扫描</Button>
-        {report ? (
-          <>
-            <span className="text-xs text-muted-foreground">
-              {report.count === 0 ? '没有残留数据' : `${report.count} 处，共 ${formatBytes(report.totalBytes)}`}
-            </span>
-            {report.count > 0 ? (
-              <Button danger htmlType="button" onClick={onPurge} size="small"><Trash2 className="size-4" />清理并回收</Button>
-            ) : null}
-          </>
+    <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-card px-4 py-2 text-sm shadow-sm">
+      <div className="flex items-center gap-2">
+        <span className="font-medium">已选择 {selectedCount} / {totalCount} 个环境</span>
+        {selectedCount < totalCount ? (
+          <Button htmlType="button" onClick={onSelectAll} size="small" type="link">
+            <ListChecks className="size-4" />选择全部 {totalCount} 个
+          </Button>
         ) : null}
+        {hasSelection ? (
+          <Button htmlType="button" onClick={onClear} size="small" type="link"><X className="size-4" />清空选择</Button>
+        ) : null}
+      </div>
+      <div className="flex gap-2">
+        <Button disabled={busy || !hasSelection} htmlType="button" onClick={onRestore} size="small" type="primary">
+          <RotateCcw className="size-4" />一键恢复
+        </Button>
+        <Button danger disabled={busy || !hasSelection} htmlType="button" onClick={onPurge} size="small">
+          <Trash2 className="size-4" />一键清空
+        </Button>
+        <Button htmlType="button" onClick={onOpenOrphan} size="small"><HardDrive className="size-4" />残留数据</Button>
       </div>
     </div>
   );
-}
-
-/** 字节数转可读文本，回收站要让用户判断该先清哪个。 */
-export function formatBytes(bytes: number): string {
-  if (bytes < 1024 * 1024) {
-    return `${(bytes / 1024).toFixed(0)} KB`;
-  }
-  if (bytes < 1024 * 1024 * 1024) {
-    return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
-  }
-
-  return `${(bytes / 1024 / 1024 / 1024).toFixed(2)} GB`;
 }

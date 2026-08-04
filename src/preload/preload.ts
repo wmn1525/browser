@@ -49,10 +49,10 @@ const api: BrowserShellApi = {
     ipcRenderer.invoke('profiles:delete', profileId) as Promise<void>,
   listDeletedProfiles: () =>
     ipcRenderer.invoke('profiles:list-deleted') as Promise<readonly ProfileSummary[]>,
-  restoreProfile: (profileId: string) =>
-    ipcRenderer.invoke('profiles:restore', profileId) as Promise<void>,
-  purgeProfile: (profileId: string) =>
-    ipcRenderer.invoke('profiles:purge', profileId) as Promise<void>,
+  restoreProfiles: (profileIds: readonly string[]) =>
+    ipcRenderer.invoke('profiles:restore', profileIds) as Promise<void>,
+  purgeProfiles: (profileIds: readonly string[]) =>
+    ipcRenderer.invoke('profiles:purge', profileIds) as Promise<void>,
   scanOrphanData: () => ipcRenderer.invoke('profiles:orphan-scan') as Promise<OrphanDataReport>,
   purgeOrphanData: () => ipcRenderer.invoke('profiles:orphan-purge') as Promise<OrphanDataReport>,
   minimizeWindow: () => ipcRenderer.invoke('window:minimize') as Promise<void>,

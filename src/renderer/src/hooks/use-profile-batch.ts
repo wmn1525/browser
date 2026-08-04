@@ -2,10 +2,8 @@ import { message as antdMessage } from 'antd';
 import { useState } from 'react';
 
 import type { ProfileGroup } from '../../../shared/types';
-import { confirmWithAntd } from '../antd-confirm';
 import { getErrorMessage, toProfileDraft } from '../app-helpers';
 import type { BatchTagMode } from '../components/profiles/batch-dialogs';
-import { duplicateProfileWithNewFingerprint } from '../components/profiles/profile-duplicate';
 import { getGroupLabel } from '../components/profiles/profile-groups';
 
 const tagModeLabels: Record<BatchTagMode, string> = {
@@ -27,7 +25,7 @@ function getNextTags(current: readonly string[], tags: readonly string[], mode: 
 }
 
 /** 批量操作类型，与批量工具栏按钮一一对应。 */
-export type BatchAction = 'launch' | 'close' | 'delete' | 'tag' | 'group' | 'duplicate';
+export type BatchAction = 'launch' | 'close' | 'delete' | 'tag' | 'group';
 
 /** 需要先弹窗采集输入的批量操作。 */
 export type BatchDialogKind = 'tag' | 'group';
@@ -96,22 +94,6 @@ export function useProfileBatch({
     }
     if (action === 'launch') await runSerial((id) => window.browserShell.launchProfile(id), '批量启动');
     if (action === 'close') await runSerial((id) => window.browserShell.closeProfile(id), '批量关闭');
-    if (action === 'duplicate') await duplicateSelected();
-  }
-
-  /** 复制会成倍增加环境数量且没有一键撤销，先把新增数量摆给用户看。 */
-  async function duplicateSelected(): Promise<void> {
-    const confirmed = await confirmWithAntd({
-      content: `会为每个环境各生成一个副本，名称加 (Copy) 后缀，共新增 ${selectedIds.length} 个。副本重新生成屏幕、显卡等硬件指纹，UA、语言、时区和代理标签保持不变。`,
-      okText: '确认复制',
-      title: `确认复制 ${selectedIds.length} 个环境？`
-    });
-    if (!confirmed) {
-      setStatus('已取消批量复制');
-      return;
-    }
-
-    await runSerial((id) => duplicateProfileWithNewFingerprint(id), '批量复制');
   }
 
   async function applyTags(tags: readonly string[], mode: BatchTagMode): Promise<void> {

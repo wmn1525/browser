@@ -329,8 +329,8 @@ export interface BrowserShellApi {
   readonly closeProfile: (profileId: string) => Promise<void>;
   readonly deleteProfile: (profileId: string) => Promise<void>;
   readonly listDeletedProfiles: () => Promise<readonly ProfileSummary[]>;
-  readonly restoreProfile: (profileId: string) => Promise<void>;
-  readonly purgeProfile: (profileId: string) => Promise<void>;
+  readonly restoreProfiles: (profileIds: readonly string[]) => Promise<void>;
+  readonly purgeProfiles: (profileIds: readonly string[]) => Promise<void>;
   readonly scanOrphanData: () => Promise<OrphanDataReport>;
   readonly purgeOrphanData: () => Promise<OrphanDataReport>;
   readonly minimizeWindow: () => Promise<void>;

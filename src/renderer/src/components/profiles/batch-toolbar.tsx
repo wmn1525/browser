@@ -6,6 +6,8 @@ import type { BatchAction } from '../../hooks/use-profile-batch';
 interface BatchToolbarProps {
   readonly onAction: (action: BatchAction) => void;
   readonly onClearSelection: () => void;
+  /** 复制多份走独立弹窗采集份数，不经过 BatchAction。 */
+  readonly onDuplicateMany: () => void;
   readonly onSelectAll: () => void;
   /** 已选环境中处于运行状态的数量，用于禁用无意义的启动/关闭。 */
   readonly runningCount: number;
@@ -18,6 +20,7 @@ interface BatchToolbarProps {
 export function BatchToolbar({
   onAction,
   onClearSelection,
+  onDuplicateMany,
   onSelectAll,
   runningCount,
   selectedCount,
@@ -44,7 +47,7 @@ export function BatchToolbar({
       <div className="flex gap-2">
         <Button disabled={runningCount === selectedCount} htmlType="button" onClick={() => onAction('launch')} size="small" type="primary"><Play className="size-4" />批量启动</Button>
         <Button disabled={runningCount === 0} htmlType="button" onClick={() => onAction('close')} size="small"><Power className="size-4" />批量关闭</Button>
-        <Button htmlType="button" onClick={() => onAction('duplicate')} size="small"><Copy className="size-4" />复制</Button>
+        <Button htmlType="button" onClick={onDuplicateMany} size="small"><Copy className="size-4" />复制</Button>
         <Button htmlType="button" onClick={() => onAction('group')} size="small"><FolderInput className="size-4" />分组</Button>
         <Button htmlType="button" onClick={() => onAction('tag')} size="small"><Tags className="size-4" />标签</Button>
         <Button danger htmlType="button" onClick={() => onAction('delete')} size="small"><Trash2 className="size-4" />删除</Button>

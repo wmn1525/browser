@@ -30,8 +30,22 @@ async function purgeChromiumDataDirs(profileId: string): Promise<void> {
       continue;
     }
 
-    // 结束仍占用该目录的浏览器进程，否则 Windows 上会抛 EBUSY/EPERM
-    await releaseChromiumProfileData(profileId, entry.name);
-    await rm(getChromiumProfileDataPath(profileId, entry.name), { recursive: true, force: true });
+    await removeDataDir(profileId, entry.name);
+  }
+}
+
+/**
+ * 先直接删，失败才结束占用进程后重试。
+ * 进程扫描要走 PowerShell 查询、单次 2-3 秒，无条件执行会让每次彻底删除都明显卡顿；
+ * 而绝大多数情况下环境早已关闭，目录根本没被占用。
+ */
+async function removeDataDir(profileId: string, dataDirName: string): Promise<void> {
+  const dataPath = getChromiumProfileDataPath(profileId, dataDirName);
+  try {
+    await rm(dataPath, { recursive: true, force: true });
+  } catch (error) {
+    console.warn(`[profiles:purge] 数据目录被占用，结束残留进程后重试: ${profileId}/${dataDirName}`, error);
+    await releaseChromiumProfileData(profileId, dataDirName);
+    await rm(dataPath, { recursive: true, force: true });
   }
 }
