@@ -6,22 +6,25 @@ export function getVisibleProfiles(
   profiles: readonly ProfileSummary[],
   activeGroupId: string,
   keyword: string,
-  tagKeyword: string
+  selectedTags: readonly string[]
 ): readonly ProfileSummary[] {
   const groupedProfiles = filterProfilesByGroup(profiles, activeGroupId);
   const normalizedKeyword = keyword.trim().toLowerCase();
-  const normalizedTag = tagKeyword.trim().toLowerCase();
   return groupedProfiles.filter((profile) => {
     const textMatch =
       normalizedKeyword.length === 0 ||
       profile.id.toLowerCase().includes(normalizedKeyword) ||
       profile.name.toLowerCase().includes(normalizedKeyword) ||
       profile.proxyLabel.toLowerCase().includes(normalizedKeyword);
-    const tagMatch =
-      normalizedTag.length === 0 ||
-      profile.tags.some((tag) => tag.toLowerCase().includes(normalizedTag));
+    // 同一维度内多选取并集：勾中任一标签即保留，与常见筛选器的行为一致
+    const tagMatch = selectedTags.length === 0 || selectedTags.some((tag) => profile.tags.includes(tag));
     return textMatch && tagMatch;
   });
+}
+
+/** 汇总所有环境已用过的标签，作为表单下拉候选，减少同义标签的重复变体。 */
+export function getAllTags(profiles: readonly ProfileSummary[]): readonly string[] {
+  return Array.from(new Set(profiles.flatMap((profile) => profile.tags))).sort((a, b) => a.localeCompare(b, 'zh-CN'));
 }
 
 /** 复用详情字段生成更新 DTO，批量操作只覆盖本次需要修改的字段。 */

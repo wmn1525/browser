@@ -26,10 +26,7 @@ export function buildProfileDraft(form: FormData, initialProfile: ProfileDetail 
       password: text(form.get('proxyPass'))
     } : undefined,
     timezone: text(form.get('timezone')),
-    disabledGlobalExtensionIds: form.getAll('disabledGlobalExtensionIds').flatMap((value) => {
-      const normalized = text(value);
-      return normalized ? [normalized] : [];
-    }),
+    disabledGlobalExtensionIds: multiText(form, 'disabledGlobalExtensionIds'),
     fingerprint: {
       platform: text(form.get('platform')),
       language: text(form.get('language')),
@@ -71,7 +68,7 @@ export function buildProfileDraft(form: FormData, initialProfile: ProfileDetail 
       networkState: text(form.get('networkState'))
     },
     startUrls: lines(form.get('urls')),
-    tags: csv(form.get('tags'))
+    tags: multiText(form, 'tags')
   };
 }
 
@@ -122,6 +119,10 @@ function lines(value: FormDataEntryValue | null): readonly string[] {
   return (text(value) ?? '').split('\n').map((item) => item.trim()).filter(Boolean);
 }
 
-function csv(value: FormDataEntryValue | null): readonly string[] {
-  return (text(value) ?? '').split(',').map((item) => item.trim()).filter(Boolean);
+/** 读取同名多值字段：复选框组和标签隐藏字段都靠它，避免把值拼成字符串再切分。 */
+function multiText(form: FormData, name: string): readonly string[] {
+  return form.getAll(name).flatMap((value) => {
+    const normalized = text(value);
+    return normalized ? [normalized] : [];
+  });
 }

@@ -6,6 +6,7 @@ import type { ProfileDetail, ProfileDraft, ProfileGroup, ProfileSummary } from '
 import { confirmDelete } from './antd-confirm';
 import { FeatureDialog, type FeaturePanel, PreviewDialog } from './app-dialogs';
 import {
+  getAllTags,
   getErrorMessage,
   getTopbarDescription,
   getTopbarItems,
@@ -43,7 +44,7 @@ export function App(): JSX.Element {
   const [previewText, setPreviewText] = useState('');
   const [featurePanel, setFeaturePanel] = useState<FeaturePanel>();
   const [keyword, setKeyword] = useState('');
-  const [tagKeyword, setTagKeyword] = useState('');
+  const [selectedTags, setSelectedTags] = useState<readonly string[]>([]);
   const [activeGroupId, setActiveGroupId] = useState('all');
   const [status, setStatus] = useState('准备就绪');
   const [publicIp, setPublicIp] = useState('当前 IP: 获取中...');
@@ -51,8 +52,9 @@ export function App(): JSX.Element {
   const [activeModule, setActiveModule] = useState<ModuleKey>('profiles');
   const kernelState = useBrowserKernels(setStatus);
   const appUpdates = useAppUpdates(setStatus);
-  const filteredProfiles = getVisibleProfiles(profiles, activeGroupId, keyword, tagKeyword);
-  const pagination = useProfilePagination(filteredProfiles, `${activeGroupId}|${keyword}|${tagKeyword}`);
+  const tagOptions = getAllTags(profiles);
+  const filteredProfiles = getVisibleProfiles(profiles, activeGroupId, keyword, selectedTags);
+  const pagination = useProfilePagination(filteredProfiles, `${activeGroupId}|${keyword}|${selectedTags.join(',')}`);
   const batch = useProfileBatch({ deleteProfiles, groups, refreshProfiles, selectedIds, setStatus });
   // 只统计已选中的运行态环境，批量启动/关闭按钮据此禁用
   const runningSelectedCount = profiles.filter((profile) => selectedIds.includes(profile.id) && profile.isRunning).length;
@@ -313,6 +315,7 @@ export function App(): JSX.Element {
                   setStatus('已取消编辑');
                 }}
                 onSubmit={submitProfile}
+                tagOptions={tagOptions}
               />
             ) : activeModule === 'profiles' ? (
               <>
@@ -323,8 +326,9 @@ export function App(): JSX.Element {
                   onGroupChange={setActiveGroupId}
                   onKeywordChange={setKeyword}
                   onRefresh={() => void refreshProfiles()}
-                  onTagKeywordChange={setTagKeyword}
-                  tagKeyword={tagKeyword}
+                  onTagsChange={setSelectedTags}
+                  selectedTags={selectedTags}
+                  tagOptions={tagOptions}
                 />
                 <section className="flex min-h-0 flex-1 flex-col overflow-hidden p-6">
                   <BatchToolbar

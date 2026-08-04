@@ -5,6 +5,7 @@ import { useState } from 'react';
 
 import type { BrowserKernelInfo, ProfileDetail, ProfileGroup } from '../../../../shared/types';
 import { browserKernelOptions } from './browser-kernel-options';
+import { ProfileTagsField } from './profile-tags-field';
 import { getOsVersionOptions, getPresetsForOs, osOptions } from './user-agent-options';
 
 const { TextArea } = Input;
@@ -24,6 +25,7 @@ interface BaseTabProps {
   readonly setOsVersion: (value: string) => void;
   readonly setUserAgent: (value: string) => void;
   readonly setUaPreset: (value: string) => void;
+  readonly tagOptions: readonly string[];
   readonly uaPresetId: string;
   readonly userAgent: string;
 }
@@ -42,6 +44,7 @@ export function BaseTab({
   setOsVersion,
   setUserAgent,
   setUaPreset,
+  tagOptions,
   uaPresetId,
   userAgent
 }: BaseTabProps): JSX.Element {
@@ -60,6 +63,7 @@ export function BaseTab({
         defaultValue={initialProfile?.groupId ?? 'ungrouped'}
         required
       />
+      <ProfileTagsField initialTags={initialProfile?.tags ?? []} tagOptions={tagOptions} />
       <Notice>注意：环境运行后，中途修改内核版本，可能导致缓存兼容性问题。</Notice>
       <OsPicker os={os} setOs={(value) => {
         setOs(value);
