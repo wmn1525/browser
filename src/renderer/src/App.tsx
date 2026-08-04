@@ -27,6 +27,7 @@ import { Filterbar } from './components/profiles/filterbar';
 import { ProfileFormPage } from './components/profiles/profile-form-page';
 import { ProfileTable, type ProfileCommand } from './components/profiles/profile-table';
 import { canDeleteGroup, createLocalGroup, getGroupLabel } from './components/profiles/profile-groups';
+import { duplicateProfileWithNewFingerprint } from './components/profiles/profile-duplicate';
 import { buildRenewProfileDraft } from './components/profiles/profile-renew-draft';
 import { useAppUpdates } from './hooks/use-app-updates';
 import { useBrowserKernels } from './hooks/use-browser-kernels';
@@ -118,7 +119,7 @@ export function App(): JSX.Element {
     if (command === 'launch') await runProfileTask(profileId, () => window.browserShell.launchProfile(profileId), '已启动');
     if (command === 'close') await runProfileTask(profileId, () => window.browserShell.closeProfile(profileId), '已关闭');
     if (command === 'delete') await deleteProfiles([profileId]);
-    if (command === 'duplicate') await runProfileTask(profileId, () => window.browserShell.duplicateProfile(profileId), '已复制');
+    if (command === 'duplicate') await runProfileTask(profileId, () => duplicateProfileWithNewFingerprint(profileId), '已复制');
     if (command === 'renew') await renewProfile(profileId);
     if (command === 'export') await exportProfile(profileId);
     if (command === 'edit') await openEditProfile(profileId);
