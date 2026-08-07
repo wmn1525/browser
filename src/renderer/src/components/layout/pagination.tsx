@@ -1,19 +1,32 @@
-import { Button, Input, Select } from 'antd';
+import { Pagination as AntdPagination } from 'antd';
 
-/** 底部分页与状态栏。 */
-export function Pagination({ count, status }: { readonly count: number; readonly status: string }): JSX.Element {
+import { PROFILE_PAGE_SIZES } from '../../hooks/use-profile-pagination';
+
+interface PaginationProps {
+  /** 筛选后的总条数，不是当前页条数。 */
+  readonly count: number;
+  readonly onChange: (page: number, pageSize: number) => void;
+  readonly page: number;
+  readonly pageSize: number;
+  readonly status: string;
+}
+
+/** 底部分页与状态栏，分页交互直接复用 antd Pagination（含每页条数与跳页）。 */
+export function Pagination({ count, onChange, page, pageSize, status }: PaginationProps): JSX.Element {
   return (
-    <section className="flex items-center justify-between border-t bg-card px-6 py-3 text-xs text-secondary">
-      <div className="flex items-center gap-3">
-        <span>共 {count} 条</span>
-        <Select className="w-24" defaultValue="10" options={[{ label: '10条/页', value: '10' }, { label: '20条/页', value: '20' }]} size="small" />
-        <Button className="h-7 w-7" disabled htmlType="button" size="small" type="text">‹</Button>
-        <Button className="h-7 w-7" htmlType="button" size="small" type="primary">1</Button>
-        <Button className="h-7 w-7" disabled htmlType="button" size="small" type="text">›</Button>
-        <span>前往</span>
-        <Input className="h-7 w-9 px-1 text-center" readOnly size="small" value="1" />
-      </div>
-      <span>{status}</span>
+    <section className="flex items-center justify-between gap-4 border-t bg-card px-6 py-2 text-xs text-secondary">
+      <AntdPagination
+        current={page}
+        onChange={onChange}
+        pageSize={pageSize}
+        pageSizeOptions={[...PROFILE_PAGE_SIZES]}
+        showQuickJumper
+        showSizeChanger
+        showTotal={(total, range) => `共 ${total} 条，当前 ${total === 0 ? 0 : range[0]}-${range[1]}`}
+        size="small"
+        total={count}
+      />
+      <span className="truncate">{status}</span>
     </section>
   );
 }

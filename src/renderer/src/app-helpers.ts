@@ -1,4 +1,4 @@
-import type { ProfileDetail, ProfileDraft, ProfileGroup, ProfileSummary } from '../../shared/types';
+import type { ProfileDetail, ProfileDraft, ProfileSummary } from '../../shared/types';
 import { filterProfilesByGroup } from './components/profiles/profile-groups';
 
 /** 按当前分组、关键字和标签过滤 profile 列表。 */
@@ -6,22 +6,25 @@ export function getVisibleProfiles(
   profiles: readonly ProfileSummary[],
   activeGroupId: string,
   keyword: string,
-  tagKeyword: string
+  selectedTags: readonly string[]
 ): readonly ProfileSummary[] {
   const groupedProfiles = filterProfilesByGroup(profiles, activeGroupId);
   const normalizedKeyword = keyword.trim().toLowerCase();
-  const normalizedTag = tagKeyword.trim().toLowerCase();
   return groupedProfiles.filter((profile) => {
     const textMatch =
       normalizedKeyword.length === 0 ||
       profile.id.toLowerCase().includes(normalizedKeyword) ||
       profile.name.toLowerCase().includes(normalizedKeyword) ||
       profile.proxyLabel.toLowerCase().includes(normalizedKeyword);
-    const tagMatch =
-      normalizedTag.length === 0 ||
-      profile.tags.some((tag) => tag.toLowerCase().includes(normalizedTag));
+    // 同一维度内多选取并集：勾中任一标签即保留，与常见筛选器的行为一致
+    const tagMatch = selectedTags.length === 0 || selectedTags.some((tag) => profile.tags.includes(tag));
     return textMatch && tagMatch;
   });
+}
+
+/** 汇总所有环境已用过的标签，作为表单下拉候选，减少同义标签的重复变体。 */
+export function getAllTags(profiles: readonly ProfileSummary[]): readonly string[] {
+  return Array.from(new Set(profiles.flatMap((profile) => profile.tags))).sort((a, b) => a.localeCompare(b, 'zh-CN'));
 }
 
 /** 复用详情字段生成更新 DTO，批量操作只覆盖本次需要修改的字段。 */
@@ -53,28 +56,6 @@ export function toProfileDraft(detail: ProfileDetail, overrides: Partial<Profile
 export function normalizeGroupName(value: string | null): string | undefined {
   const normalized = value?.trim();
   return normalized && normalized.length > 0 ? normalized : undefined;
-}
-
-export function getBatchGroupPrompt(groups: readonly ProfileGroup[]): string {
-  const names = groups.map((group) => group.name).join('、') || '暂无分组';
-  return `请输入目标分组名称，输入“未分组”可移出分组。\n可选分组：${names}`;
-}
-
-/** 解析批量分组输入，避免把不存在的分组名写入 profile。 */
-export function resolvePromptGroupId(value: string | null, groups: readonly ProfileGroup[]): {
-  readonly cancelled: boolean;
-  readonly groupId?: string;
-} {
-  const name = normalizeGroupName(value);
-  if (!name) {
-    return { cancelled: true };
-  }
-  if (name === '未分组') {
-    return { cancelled: false, groupId: undefined };
-  }
-
-  const group = groups.find((item) => item.name === name);
-  return group ? { cancelled: false, groupId: group.id } : { cancelled: true };
 }
 
 export function getErrorMessage(error: unknown): string {

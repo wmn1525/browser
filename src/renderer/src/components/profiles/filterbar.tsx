@@ -10,8 +10,9 @@ interface FilterbarProps {
   readonly onGroupChange: (groupId: string) => void;
   readonly onKeywordChange: (value: string) => void;
   readonly onRefresh: () => void;
-  readonly onTagKeywordChange: (value: string) => void;
-  readonly tagKeyword: string;
+  readonly onTagsChange: (tags: readonly string[]) => void;
+  readonly selectedTags: readonly string[];
+  readonly tagOptions: readonly string[];
 }
 
 /** Profile 筛选栏，使用 antd Select 保证下拉交互质量。 */
@@ -22,8 +23,9 @@ export function Filterbar({
   onGroupChange,
   onKeywordChange,
   onRefresh,
-  onTagKeywordChange,
-  tagKeyword
+  onTagsChange,
+  selectedTags,
+  tagOptions
 }: FilterbarProps): JSX.Element {
   return (
     <section className="flex items-center gap-3 border-b bg-card px-6 py-3">
@@ -42,7 +44,17 @@ export function Filterbar({
         <Input className="pl-9" onChange={(event) => onKeywordChange(event.target.value)} placeholder="名称 | 备注 | 编号" value={keyword} />
       </div>
       <FilterSelect options={[{ label: '全部创建人', value: 'all' }, { label: 'admin', value: 'admin' }]} placeholder="请选择创建人" value="all" />
-      <Input className="w-64" onChange={(event) => onTagKeywordChange(event.target.value)} placeholder="请选择标签 (可多选)" value={tagKeyword} />
+      {/* 候选只来自环境已用过的标签，选不出没人用的标签，也就不会筛出空列表 */}
+      <Select
+        allowClear
+        className="w-64"
+        maxTagCount="responsive"
+        mode="multiple"
+        onChange={onTagsChange}
+        options={tagOptions.map((tag) => ({ label: tag, value: tag }))}
+        placeholder="全部标签 (可多选)"
+        value={[...selectedTags]}
+      />
       <div className="ml-auto flex gap-2">
         <Button className="h-9 w-9 p-0" htmlType="button" onClick={onRefresh} title="刷新"><RefreshCw className="size-4" /></Button>
       </div>

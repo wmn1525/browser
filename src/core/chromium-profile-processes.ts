@@ -19,6 +19,13 @@ type WindowsProcessJson = ChromiumProfileProcessInfo | readonly ChromiumProfileP
 
 const chromiumProcessNames = ['chrome', 'chromium', 'msedge'];
 const execFileAsync = promisify(execFile);
+/**
+ * 待匹配路径通过环境变量传给 PowerShell。
+ * `powershell.exe -Command` 不会把尾随参数放进 `$args`（那是 `-File` 的行为），
+ * 早前用 `$args[0]` 会让脚本抛 "不能对 Null 值表达式调用方法" 而整个分支静默失效；
+ * 走环境变量同时避免了路径里的引号被当成脚本语法。
+ */
+const needleEnvName = 'IMRUN_PROFILE_DATA_PATH';
 
 /** 汇总通用进程查询和 Windows 命令行查询，尽量找全占用 profile 的 Chromium 进程。 */
 export async function findChromiumProfileProcesses(dataPath: string): Promise<readonly ChromiumProfileProcessInfo[]> {
@@ -53,14 +60,13 @@ async function findWindowsChromiumProfileProcesses(dataPath: string): Promise<re
       'Bypass',
       '-Command',
       [
-        '$needle=$args[0].ToLower().Replace("\\","/");',
+        `$needle=$env:${needleEnvName}.ToLower().Replace("\\","/");`,
         'Get-CimInstance Win32_Process |',
         'Where-Object { $_.CommandLine -and $_.CommandLine.ToLower().Replace("\\","/").Contains($needle) } |',
         'Select-Object @{Name="pid";Expression={$_.ProcessId}},@{Name="name";Expression={$_.Name}},@{Name="cmd";Expression={$_.CommandLine}} |',
         'ConvertTo-Json -Compress'
-      ].join(' '),
-      dataPath
-    ], { timeout: 2500, windowsHide: true });
+      ].join(' ')
+    ], { timeout: 2500, windowsHide: true, env: { ...process.env, [needleEnvName]: dataPath } });
     return parseWindowsProcesses(stdout);
   } catch {
     return [];

@@ -22,6 +22,16 @@ export function getChromiumProfileDataPath(profileId: string, dataDirName: strin
   return getSafeChildPath(chromiumProfilesRoot, profileId, dataDirName ?? defaultChromiumDataDir);
 }
 
+/** 单个 profile 在核心库存储里的根目录，彻底删除与孤儿扫描都要用。 */
+export function getChromiumProfileRoot(profileId: string): string {
+  return getSafeChildPath(chromiumProfilesRoot, profileId);
+}
+
+/** 核心库 profile 存储根目录，仅供孤儿扫描遍历。 */
+export function getChromiumProfilesRoot(): string {
+  return chromiumProfilesRoot;
+}
+
 /** 生成新的 Chromium user data 目录，旧目录后台清理，避免旧日志锁阻塞下次启动。 */
 export async function renewChromiumProfileData(profileId: string, oldDataDirName: string | undefined): Promise<string> {
   const profileRoot = getSafeChildPath(chromiumProfilesRoot, profileId);
@@ -34,6 +44,11 @@ export async function renewChromiumProfileData(profileId: string, oldDataDirName
   void cleanupOldProfileData(profileRoot, nextDataDirName).catch(() => undefined);
   console.log(`[profiles:renew] 清理完成: ${profileId}`);
   return nextDataDirName;
+}
+
+/** 删除 profile 前释放 user data 目录占用：Windows 上句柄未释放会让核心库的 rmSync 抛 EBUSY/EPERM。 */
+export async function releaseChromiumProfileData(profileId: string, dataDirName: string | undefined): Promise<void> {
+  await killChromiumProfileProcesses(getChromiumProfileDataPath(profileId, dataDirName));
 }
 
 /** 删除历史数据目录只是后台卫生任务，失败不能影响新目录启动。 */

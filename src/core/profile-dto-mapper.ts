@@ -25,6 +25,12 @@ export interface ExtendedProfileConfig extends ProfileConfig {
   readonly loadVideos?: boolean;
   readonly disabledGlobalExtensionIds?: readonly string[];
   readonly chromiumDataDir?: string;
+  /**
+   * 回收站标记：有值表示环境已被软删除。
+   * 和 chromiumDataDir 一样属于引擎内部字段，绝不能出现在 normalizeProfileDraft 的返回体里——
+   * 那个字面量列出的 key 会在 update 浅合并时把原值覆盖成 undefined，等于每次编辑都把标记抹掉。
+   */
+  readonly deletedAt?: number;
 }
 
 /** 扩展核心库存储模型，读取管理壳额外字段。 */
@@ -41,6 +47,12 @@ export interface ExtendedStoredProfile extends StoredProfile {
   readonly loadVideos?: boolean;
   readonly disabledGlobalExtensionIds?: readonly string[];
   readonly chromiumDataDir?: string;
+  /**
+   * 回收站标记：有值表示环境已被软删除。
+   * 和 chromiumDataDir 一样属于引擎内部字段，绝不能出现在 normalizeProfileDraft 的返回体里——
+   * 那个字面量列出的 key 会在 update 浅合并时把原值覆盖成 undefined，等于每次编辑都把标记抹掉。
+   */
+  readonly deletedAt?: number;
 }
 
 /** 将管理壳 DTO 转为核心库需要的可持久化配置。 */
@@ -80,7 +92,8 @@ export function toProfileSummary(profile: StoredProfile, isRunning: boolean): Pr
     timezoneLabel: profile.timezone ?? 'System',
     tags: profile.tags ?? [],
     isRunning,
-    lastLaunchedAt: profile.lastLaunchedAt
+    lastLaunchedAt: profile.lastLaunchedAt,
+    deletedAt: extendedProfile.deletedAt
   };
 }
 

@@ -12,6 +12,7 @@ import type {
   ManagedExtensionEngine,
   ManagedExtensionUpdate,
   OpenApiInfo,
+  OrphanDataReport,
   ProfileDetail,
   ProfileDraft,
   ProfileGroup,
@@ -46,6 +47,14 @@ const api: BrowserShellApi = {
     ipcRenderer.invoke('profiles:close', profileId) as Promise<void>,
   deleteProfile: (profileId: string) =>
     ipcRenderer.invoke('profiles:delete', profileId) as Promise<void>,
+  listDeletedProfiles: () =>
+    ipcRenderer.invoke('profiles:list-deleted') as Promise<readonly ProfileSummary[]>,
+  restoreProfiles: (profileIds: readonly string[]) =>
+    ipcRenderer.invoke('profiles:restore', profileIds) as Promise<void>,
+  purgeProfiles: (profileIds: readonly string[]) =>
+    ipcRenderer.invoke('profiles:purge', profileIds) as Promise<void>,
+  scanOrphanData: () => ipcRenderer.invoke('profiles:orphan-scan') as Promise<OrphanDataReport>,
+  purgeOrphanData: () => ipcRenderer.invoke('profiles:orphan-purge') as Promise<OrphanDataReport>,
   minimizeWindow: () => ipcRenderer.invoke('window:minimize') as Promise<void>,
   toggleMaximizeWindow: () =>
     ipcRenderer.invoke('window:toggle-maximize') as Promise<void>,

@@ -1,6 +1,6 @@
 import { Button, Checkbox, Dropdown, Tag, Tooltip, type MenuProps } from 'antd';
-import { Chrome, Copy, Download, Eye, Flame, MoreVertical, Pencil, Play, Power, RefreshCcw, Trash2 } from 'lucide-react';
-import { useState, type PropsWithChildren } from 'react';
+import { Chrome, Copy, CopyPlus, Download, Eye, Flame, MoreVertical, Pencil, Play, Power, RefreshCcw, Trash2 } from 'lucide-react';
+import { useLayoutEffect, useRef, useState, type PropsWithChildren } from 'react';
 
 import type { ProfileGroup, ProfileSummary } from '../../../../shared/types';
 import { getKernelEngine } from './browser-kernel-options';
@@ -11,6 +11,7 @@ export type ProfileCommand =
   | 'close'
   | 'edit'
   | 'duplicate'
+  | 'duplicate-many'
   | 'renew'
   | 'delete'
   | 'export'
@@ -18,25 +19,47 @@ export type ProfileCommand =
 
 interface ProfileTableProps {
   readonly groups: readonly ProfileGroup[];
+  /** 刚编辑过的环境 id：不在可视区时滚过去，并短暂高亮。 */
+  readonly highlightProfileId: string | undefined;
   readonly profiles: readonly ProfileSummary[];
   readonly selectedIds: readonly string[];
+  /** 读取离开前的滚动偏移，挂载时据此回到原位置。 */
+  readonly getScrollTop: () => number;
   readonly onCommand: (command: ProfileCommand, profileId: string) => void;
+  readonly onScrollChange: (scrollTop: number) => void;
   readonly onSelectedIdsChange: (profileIds: readonly string[]) => void;
 }
 
 /** Profile 表格，保留参考页面列结构并接入完整行操作。 */
 export function ProfileTable({
+  getScrollTop,
   groups,
+  highlightProfileId,
   onCommand,
+  onScrollChange,
   onSelectedIdsChange,
   profiles,
   selectedIds
 }: ProfileTableProps): JSX.Element {
   const allSelected = profiles.length > 0 && profiles.every((profile) => selectedIds.includes(profile.id));
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const highlightRowRef = useRef<HTMLTableRowElement>(null);
+
+  // 只在挂载时跑一次：先回到离开前的滚动位置，再把刚编辑的行拉进可视区。
+  // block: 'nearest' 的语义正好是「已经完整可见就不动」，不用自己算边界，
+  // 也就保证了「行本来就看得见」时用户的浏览位置不会被打断。
+  useLayoutEffect(() => {
+    scrollRef.current?.scrollTo({ top: getScrollTop() });
+    highlightRowRef.current?.scrollIntoView({ block: 'nearest' });
+  }, []);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border bg-card shadow-sm">
-      <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
+      <div
+        className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden"
+        onScroll={(event) => onScrollChange(event.currentTarget.scrollTop)}
+        ref={scrollRef}
+      >
         <table className="w-full table-fixed border-collapse text-left text-sm">
           <colgroup>
             <col className="w-11" />
@@ -52,8 +75,9 @@ export function ProfileTable({
               <Th>
                 <Checkbox
                   checked={allSelected}
+                  indeterminate={!allSelected && profiles.some((profile) => selectedIds.includes(profile.id))}
                   onChange={(event) => {
-                    onSelectedIdsChange(event.target.checked ? profiles.map((profile) => profile.id) : []);
+                    onSelectedIdsChange(togglePageSelected(selectedIds, profiles, event.target.checked));
                   }}
                 />
               </Th>
@@ -67,7 +91,11 @@ export function ProfileTable({
           </thead>
           <tbody>
             {profiles.map((profile) => (
-              <tr className={profile.isRunning ? 'bg-primary/5 hover:bg-primary/10' : 'hover:bg-primary/5'} key={profile.id}>
+              <tr
+                className={getRowClassName(profile.isRunning, profile.id === highlightProfileId)}
+                key={profile.id}
+                ref={profile.id === highlightProfileId ? highlightRowRef : undefined}
+              >
                 <Td>
                   <Checkbox
                     checked={selectedIds.includes(profile.id)}
@@ -100,6 +128,20 @@ export function ProfileTable({
       {profiles.length === 0 ? <div className="p-9 text-center text-muted-foreground">还没有浏览器环境</div> : null}
     </div>
   );
+}
+
+/**
+ * 行底色：高亮优先级高于运行态，否则刚编辑的运行中环境看不出被标记。
+ * scroll-mt-9 抵消吸顶表头的高度，避免 scrollIntoView 把目标行停在表头底下。
+ * duration-500 让高亮到期后是淡出而不是突兀消失。
+ */
+function getRowClassName(isRunning: boolean, isHighlighted: boolean): string {
+  const base = 'scroll-mt-9 transition-colors duration-500';
+  if (isHighlighted) {
+    return `${base} bg-primary/20 hover:bg-primary/20`;
+  }
+
+  return isRunning ? `${base} bg-primary/5 hover:bg-primary/10` : `${base} hover:bg-primary/5`;
 }
 
 function Tags({ tags }: { readonly tags: readonly string[] }): JSX.Element {
@@ -173,6 +215,7 @@ function ProfileMoreMenu({
     { key: 'detail', icon: <Eye className="size-4" />, label: '查看详情' },
     { key: 'edit', icon: <Pencil className="size-4" />, label: '编辑' },
     { key: 'duplicate', icon: <Copy className="size-4" />, label: '复制' },
+    { key: 'duplicate-many', icon: <CopyPlus className="size-4" />, label: '复制多份' },
     { key: 'renew', icon: <RefreshCcw className="size-4" />, label: '一键换新' },
     { key: 'export', icon: <Download className="size-4" />, label: '导出 JSON' },
     { type: 'divider' },
@@ -197,6 +240,20 @@ function Th({ children, className }: PropsWithChildren<{ readonly className?: st
 
 function Td({ children, className }: PropsWithChildren<{ readonly className?: string }>): JSX.Element {
   return <td className={['overflow-hidden border-b px-3 py-3 align-middle', className].filter(Boolean).join(' ')}>{children}</td>;
+}
+
+/** 表头勾选只影响当前页，避免分页后误清空其它页已选中的环境。 */
+function togglePageSelected(
+  selectedIds: readonly string[],
+  profiles: readonly ProfileSummary[],
+  checked: boolean
+): readonly string[] {
+  const pageIds = profiles.map((profile) => profile.id);
+  if (checked) {
+    return Array.from(new Set([...selectedIds, ...pageIds]));
+  }
+
+  return selectedIds.filter((id) => !pageIds.includes(id));
 }
 
 function toggleSelected(selectedIds: readonly string[], profileId: string, checked: boolean): readonly string[] {

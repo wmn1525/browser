@@ -6,10 +6,11 @@ import { AutomationPage, type AutomationTab } from './automation-page';
 import { LocalGroupsPage } from './local-groups-page';
 import { ManagedExtensionsPage } from './managed-extensions-page';
 import { ProxyPoolPage } from './proxy-pool-page';
+import { RecycleBinPage } from './recycle-bin-page';
 import { SettingsCenterPage } from './settings-center-page';
 
 export type AutomationModuleKey = 'automation-api-mcp' | 'automation-window-sync';
-export type ModuleKey = 'profiles' | 'groups' | 'proxies' | 'apps' | AutomationModuleKey | 'settings' | 'team';
+export type ModuleKey = 'profiles' | 'groups' | 'proxies' | 'apps' | AutomationModuleKey | 'recycle-bin' | 'settings' | 'team';
 
 export interface FeatureAction {
   readonly label: string;
@@ -76,6 +77,10 @@ export function FeaturePage({
 
   if (isAutomationModule(config.key)) {
     return <AutomationPage activeTab={toAutomationTab(config.key)} />;
+  }
+
+  if (config.key === 'recycle-bin') {
+    return <RecycleBinPage />;
   }
 
   if (config.key === 'settings') {

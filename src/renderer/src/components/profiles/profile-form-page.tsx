@@ -21,10 +21,11 @@ interface ProfileFormPageProps {
   readonly initialProfile?: ProfileDetail;
   readonly onCancel: () => void;
   readonly onSubmit: (draft: ProfileDraft) => Promise<void>;
+  readonly tagOptions: readonly string[];
 }
 
 /** 主内容区的新建/编辑页，不使用弹窗。 */
-export function ProfileFormPage({ groups, initialProfile, onCancel, onSubmit }: ProfileFormPageProps): JSX.Element {
+export function ProfileFormPage({ groups, initialProfile, onCancel, onSubmit, tagOptions }: ProfileFormPageProps): JSX.Element {
   const [os, setOs] = useState(initialProfile?.os ?? 'Windows');
   const matchedPreset = getPresetByUserAgent(os, initialProfile?.userAgent) ?? getDefaultPreset(os);
   const [uaPresetId, setUaPresetId] = useState(matchedPreset.id);
@@ -108,7 +109,7 @@ export function ProfileFormPage({ groups, initialProfile, onCancel, onSubmit }: 
           <Tabs
             defaultActiveKey="base"
             items={[
-              { children: <BaseTab downloadingKernelId={downloadingKernelId} groups={groups} initialProfile={initialProfile} kernel={kernel} kernels={kernels} onDownloadKernel={(id) => void downloadKernel(id)} os={os} osVersion={osVersion} setKernel={setKernel} setOs={selectOs} setOsVersion={setOsVersion} setUserAgent={setUserAgent} setUaPreset={selectUaPreset} uaPresetId={uaPresetId} userAgent={userAgent} />, forceRender: true, key: 'base', label: '基础信息' },
+              { children: <BaseTab downloadingKernelId={downloadingKernelId} groups={groups} initialProfile={initialProfile} kernel={kernel} kernels={kernels} onDownloadKernel={(id) => void downloadKernel(id)} os={os} osVersion={osVersion} setKernel={setKernel} setOs={selectOs} setOsVersion={setOsVersion} setUserAgent={setUserAgent} setUaPreset={selectUaPreset} tagOptions={tagOptions} uaPresetId={uaPresetId} userAgent={userAgent} />, forceRender: true, key: 'base', label: '基础信息' },
               { children: <ProxyTab initialProfile={initialProfile} />, forceRender: true, key: 'proxy', label: '代理配置' },
               { children: <AccountTab initialProfile={initialProfile} />, forceRender: true, key: 'account', label: '账号平台' },
               { children: <AppsTab initialProfile={initialProfile} kernel={kernel} loadImages={loadImages} loadVideos={loadVideos} setLoadImages={setLoadImages} setLoadVideos={setLoadVideos} />, forceRender: true, key: 'apps', label: '应用配置' },
